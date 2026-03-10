@@ -12,6 +12,7 @@
 /server/dev.sqlite3
 /GUIDANCE/*.html
 /GUIDANCE/*_files/
+/FHD_process_automation.code-workspace
 
 # Logs
 logs
