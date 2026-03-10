@@ -334,7 +334,7 @@ Token security requirements:
 | `ENABLE_DEV_AUTH` flag for dev identity issuance | Deployed | — |
 | `users` table role enum expansion (5 roles + admin) | **Deployed** (DB migration + legacy-admin backfill + token/middleware/service support) | AD-004 |
 | `users.staff_number` + `users.departments` fields | **Deployed (baseline)** (schema + backfill migration + seed alignment in place; production governance lifecycle still pending) | AD-004 |
-| JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes now also protected) | AD-004 |
+| JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes protected; legacy `phase1` routes now also require auth when enabled) | AD-004 |
 | Row-level scoping enforcement in service layer | **Partial** (case/profile scoped workflow middleware deployed for protected workflow endpoints) | AD-004 |
 | Password hash storage + login endpoint | **Deployed** (`POST /api/v1/auth/login`, seeded demo password hash) | AD-004 |
 | Production identity provider integration (replace dev login) | **Partial** (`AUTH_PROVIDER=trusted_header` + `/auth/provider-login` adapter seam + trusted source IP enforcement implemented; enterprise IdP/proxy rollout and ops hardening pending) | AD-004 |

@@ -5,12 +5,13 @@ import {
   generatePdf,
   getWorkflow,
 } from '../../../controllers/phase1Controller';
+import { requireAuth } from '../../../middleware/auth';
 
 const router = express.Router();
 
-router.get('/workflows/:studentNumber', getWorkflow);
-router.post('/workflows/:studentNumber/steps/:step/complete', completeStep);
-router.post('/title-registrations', createTitleRegistration);
-router.post('/workflows/:studentNumber/steps/:step/generate-pdf', generatePdf);
+router.get('/workflows/:studentNumber', requireAuth, getWorkflow);
+router.post('/workflows/:studentNumber/steps/:step/complete', requireAuth, completeStep);
+router.post('/title-registrations', requireAuth, createTitleRegistration);
+router.post('/workflows/:studentNumber/steps/:step/generate-pdf', requireAuth, generatePdf);
 
 export default router;
