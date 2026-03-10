@@ -10,6 +10,10 @@ export const profileIdParamSchema = z.object({
   profileId: z.string().regex(/^\d+$/, { message: 'profileId must be a positive integer string.' }),
 });
 
+export const idParamSchema = z.object({
+  id: z.string().regex(/^\d+$/, { message: 'id must be a positive integer string.' }),
+});
+
 export const studentNumberParamSchema = z.object({
   studentNumber: nonEmptyString.max(64),
 });
@@ -103,5 +107,12 @@ export const externalInviteCompleteBodySchema = z.object({
 export const phase1TitleRegistrationBodySchema = z.object({
   studentNumber: nonEmptyString.max(64),
   proposedTitle: nonEmptyString.max(500),
+  abstract: z.string().max(8000).optional(),
+});
+
+export const titleRegistrationCreateBodySchema = z.object({
+  student_id: z.coerce.number().int().positive(),
+  supervisor_id: z.coerce.number().int().positive(),
+  proposed_title: nonEmptyString.max(500),
   abstract: z.string().max(8000).optional(),
 });
