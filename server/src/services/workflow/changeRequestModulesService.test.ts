@@ -2,7 +2,8 @@ import test, { after, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import db from '../../db/knex';
-import { postLogout, postProviderLogin } from '../../controllers/authController';
+import { postLogin, postLogout, postProviderLogin } from '../../controllers/authController';
+import { hashPassword } from '../../auth/passwordService';
 import { issueSessionTokens, toTokenUser } from '../../auth/sessionService';
 import { initDb } from '../../db/initDb';
 import {
@@ -99,12 +100,18 @@ const facultyActor: Actor = {
 };
 
 const createdStudentIds: number[] = [];
+const createdUserIds: number[] = [];
 
 before(async () => {
   await initDb();
 });
 
 afterEach(async () => {
+  while (createdUserIds.length > 0) {
+    const userId = createdUserIds.pop()!;
+    await db('auth_refresh_tokens').where({ user_id: userId }).delete();
+    await db('users').where({ id: userId }).delete();
+  }
   while (createdStudentIds.length > 0) {
     const studentId = createdStudentIds.pop()!;
     await db('title_registration_cases').where({ sasi_student_id: studentId }).delete();
@@ -189,6 +196,24 @@ function makeLogoutReq(input: {
     ip: input.ip ?? '127.0.0.1',
     method: 'POST',
     originalUrl: '/api/v1/auth/logout',
+    get(name: string): string | undefined {
+      if (name.toLowerCase() === 'user-agent') {
+        return 'node-test';
+      }
+      return undefined;
+    },
+  } as unknown as Request;
+}
+
+function makeLoginReq(input: { identifier: string; password: string; ip?: string }): Request {
+  return {
+    body: {
+      identifier: input.identifier,
+      password: input.password,
+    },
+    ip: input.ip ?? '127.0.0.1',
+    method: 'POST',
+    originalUrl: '/api/v1/auth/login',
     get(name: string): string | undefined {
       if (name.toLowerCase() === 'user-agent') {
         return 'node-test';
@@ -695,4 +720,93 @@ test('logout rejects refresh token not owned by authenticated user', async () =>
     .orderBy('id', 'desc')
     .first('revoked_at');
   assert.equal(tokenRow?.revoked_at, null);
+});
+
+test('login fails when identifier resolves to multiple users', async () => {
+  const timestamp = Date.now();
+  const passwordHash = await hashPassword('Conflict123!');
+  const conflictingIdentifier = `CONFLICT-${timestamp}`;
+
+  const inserted = await db('users')
+    .insert([
+      {
+        sasi_id: conflictingIdentifier,
+        staff_number: `STAFF-CONF-A-${timestamp}`,
+        first_name: 'Conflict',
+        last_name: 'One',
+        email: `conflict-a-${timestamp}@example.com`,
+        role: 'system_admin',
+        password_hash: passwordHash,
+        active: 1,
+      },
+      {
+        sasi_id: `CONF-B-${timestamp}`,
+        staff_number: conflictingIdentifier,
+        first_name: 'Conflict',
+        last_name: 'Two',
+        email: `conflict-b-${timestamp}@example.com`,
+        role: 'system_admin',
+        password_hash: passwordHash,
+        active: 1,
+      },
+    ])
+    .returning('id');
+  for (const entry of inserted as Array<number | { id: number }>) {
+    createdUserIds.push(typeof entry === 'number' ? entry : entry.id);
+  }
+
+  await withEnv({ AUTH_PROVIDER: 'local_password' }, async () => {
+    const req = makeLoginReq({ identifier: conflictingIdentifier, password: 'Conflict123!' });
+    const res = makeResCapture();
+    await postLogin(req, res);
+    assert.equal(res.statusCodeCaptured, 401);
+  });
+});
+
+test('provider-login fails when trusted identifiers map to conflicting users', async () => {
+  const timestamp = Date.now();
+  const inserted = await db('users')
+    .insert([
+      {
+        sasi_id: `PROV-A-${timestamp}`,
+        staff_number: `STAFF-PROV-A-${timestamp}`,
+        first_name: 'Provider',
+        last_name: 'One',
+        email: `provider-one-${timestamp}@example.com`,
+        role: 'system_admin',
+        active: 1,
+      },
+      {
+        sasi_id: `PROV-B-${timestamp}`,
+        staff_number: `STAFF-PROV-B-${timestamp}`,
+        first_name: 'Provider',
+        last_name: 'Two',
+        email: `provider-two-${timestamp}@example.com`,
+        role: 'system_admin',
+        active: 1,
+      },
+    ])
+    .returning('id');
+  for (const entry of inserted as Array<number | { id: number }>) {
+    createdUserIds.push(typeof entry === 'number' ? entry : entry.id);
+  }
+
+  await withEnv(
+    {
+      AUTH_PROVIDER: 'trusted_header',
+      AUTH_PROVIDER_SHARED_SECRET: 'test-secret',
+      AUTH_PROVIDER_TRUSTED_PROXY_IPS: '127.0.0.1,::1',
+    },
+    async () => {
+      const req = makeProviderLoginReq({
+        ip: '127.0.0.1',
+        secret: 'test-secret',
+        email: `provider-one-${timestamp}@example.com`,
+        staffNumber: `STAFF-PROV-B-${timestamp}`,
+      });
+      const res = makeResCapture();
+      await postProviderLogin(req, res);
+      assert.equal(res.statusCodeCaptured, 401);
+    },
+  );
 });

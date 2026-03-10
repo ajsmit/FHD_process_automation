@@ -248,6 +248,14 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - applied `requireAuth` middleware to all legacy `phase1` endpoints (`server/src/api/v1/routes/phase1Routes.ts`) so enabling `ENABLE_LEGACY_PHASE1=true` no longer exposes unauthenticated legacy workflow operations.
 - synchronized implementation-status wording in `GUIDANCE/AUTHORIZATION_MATRIX.md` to include legacy `phase1` auth coverage.
 - AD-004 remains In Progress pending enterprise IdP/proxy rollout hardening and final role-assignment governance lifecycle.
+35. AD-004 progress update on 2026-03-10 (identity conflict hardening tranche):
+- hardened local password login identity resolution (`POST /api/v1/auth/login`) to reject ambiguous identifiers that map to multiple user rows, instead of selecting a first-match row.
+- hardened trusted-header provider login (`POST /api/v1/auth/provider-login`) to reject conflicting identity headers when email/SASI/staff-number resolve to different users; provider login now requires a single consistent user mapping.
+- added audit events for identity-mismatch scenarios:
+  - `login_failed_identifier_conflict`
+  - `provider_login_failed_identity_conflict`
+- expanded auth regression coverage with new tests for duplicate-identifier and provider-header conflict paths (`server/src/services/workflow/changeRequestModulesService.test.ts`).
+- AD-004 remains In Progress pending enterprise IdP/proxy rollout hardening and final role-assignment governance lifecycle.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

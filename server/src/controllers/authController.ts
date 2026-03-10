@@ -29,6 +29,75 @@ interface UserRow {
   active?: number | boolean | null;
 }
 
+function isActiveUser(value: UserRow['active']): boolean {
+  return value === undefined || value === null || value === true || Number(value) === 1;
+}
+
+function normalizeIdentifier(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+async function resolveLoginUser(identifier: string): Promise<{ user: UserRow | null; reason: 'not_found' | 'ambiguous' | null }> {
+  const normalized = normalizeIdentifier(identifier);
+  const users = await db<UserRow>('users')
+    .where({ sasi_id: identifier })
+    .orWhere({ staff_number: identifier })
+    .orWhereRaw('LOWER(email) = ?', [normalized])
+    .select('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'password_hash', 'active');
+  if (users.length === 0) {
+    return { user: null, reason: 'not_found' };
+  }
+  const uniqueIds = new Set(users.map((entry) => entry.id));
+  if (uniqueIds.size > 1) {
+    return { user: null, reason: 'ambiguous' };
+  }
+  return { user: users[0], reason: null };
+}
+
+async function resolveProviderUser(identity: { email: string; sasiId: string; staffNumber: string }): Promise<{ user: UserRow | null; reason: 'not_found' | 'ambiguous' | 'conflict' | null }> {
+  const candidates: UserRow[] = [];
+
+  if (identity.email) {
+    const rows = await db<UserRow>('users')
+      .whereRaw('LOWER(email) = ?', [identity.email])
+      .select('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'active');
+    if (rows.length > 1) {
+      return { user: null, reason: 'ambiguous' };
+    }
+    if (rows.length === 1) candidates.push(rows[0]);
+  }
+
+  if (identity.sasiId) {
+    const rows = await db<UserRow>('users')
+      .where({ sasi_id: identity.sasiId })
+      .select('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'active');
+    if (rows.length > 1) {
+      return { user: null, reason: 'ambiguous' };
+    }
+    if (rows.length === 1) candidates.push(rows[0]);
+  }
+
+  if (identity.staffNumber) {
+    const rows = await db<UserRow>('users')
+      .where({ staff_number: identity.staffNumber })
+      .select('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'active');
+    if (rows.length > 1) {
+      return { user: null, reason: 'ambiguous' };
+    }
+    if (rows.length === 1) candidates.push(rows[0]);
+  }
+
+  if (candidates.length === 0) {
+    return { user: null, reason: 'not_found' };
+  }
+
+  const uniqueIds = new Set(candidates.map((entry) => entry.id));
+  if (uniqueIds.size > 1) {
+    return { user: null, reason: 'conflict' };
+  }
+  return { user: candidates[0], reason: null };
+}
+
 function devAuthEnabled(): boolean {
   if (resolveAuthProvider() !== 'local_password') {
     return false;
@@ -108,15 +177,15 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const user = await db<UserRow>('users')
-      .where({ sasi_id: identifier })
-      .orWhere({ staff_number: identifier })
-      .orWhere({ email: identifier })
-      .first('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'password_hash', 'active');
+    const resolved = await resolveLoginUser(identifier);
+    const user = resolved.user;
 
     if (!user || !user.password_hash) {
+      const eventType = resolved.reason === 'ambiguous'
+        ? 'login_failed_identifier_conflict'
+        : 'login_failed_user_not_found';
       await logAuthAuditEvent({
-        eventType: 'login_failed_user_not_found',
+        eventType,
         actorSasiId: identifier,
         route: req.originalUrl,
         method: req.method,
@@ -127,7 +196,7 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const active = user.active === undefined || user.active === null || user.active === true || Number(user.active) === 1;
+    const active = isActiveUser(user.active);
     if (!active) {
       await logAuthAuditEvent({
         eventType: 'login_failed_inactive_user',
@@ -235,36 +304,27 @@ export async function postProviderLogin(req: Request, res: Response): Promise<vo
       return;
     }
 
-    let query = db<UserRow>('users');
-    if (identity.email) {
-      query = query.whereRaw('LOWER(email) = ?', [identity.email]);
-    }
-    if (identity.sasiId) {
-      query = identity.email ? query.orWhere({ sasi_id: identity.sasiId }) : query.where({ sasi_id: identity.sasiId });
-    }
-    if (identity.staffNumber) {
-      query = (identity.email || identity.sasiId)
-        ? query.orWhere({ staff_number: identity.staffNumber })
-        : query.where({ staff_number: identity.staffNumber });
-    }
-
-    const user = await query
-      .first('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'active');
+    const resolved = await resolveProviderUser(identity);
+    const user = resolved.user;
 
     if (!user) {
+      const eventType = resolved.reason === 'not_found'
+        ? 'provider_login_failed_user_not_found'
+        : 'provider_login_failed_identity_conflict';
       await logAuthAuditEvent({
-        eventType: 'provider_login_failed_user_not_found',
+        eventType,
         actorSasiId: identity.sasiId || identity.staffNumber || identity.email,
         route: req.originalUrl,
         method: req.method,
         ipAddress: req.ip,
         userAgent: req.get('user-agent') ?? '',
+        details: resolved.reason && resolved.reason !== 'not_found' ? { reason: resolved.reason } : {},
       });
       res.status(401).json({ message: 'Provider identity does not map to an active user.' });
       return;
     }
 
-    const active = user.active === undefined || user.active === null || user.active === true || Number(user.active) === 1;
+    const active = isActiveUser(user.active);
     if (!active) {
       await logAuthAuditEvent({
         eventType: 'provider_login_failed_inactive_user',
