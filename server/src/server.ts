@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import path from 'path';
 import api from './api/v1';
+import { validateAuthStartupGuardrails } from './auth/startupAuthGuardrails';
 import { initDb } from './db/initDb';
 
 // Load environment variables
@@ -88,6 +89,7 @@ app.get('/', (req, res) => {
 
 // Start the server
 async function start() {
+  validateAuthStartupGuardrails();
   const shouldInitDb = (process.env.AUTO_INIT_DB ?? (process.env.NODE_ENV === 'production' ? 'false' : 'true')).trim().toLowerCase() === 'true';
   if (shouldInitDb) {
     await initDb();

@@ -1,6 +1,8 @@
 import test, { after, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';
+import type { Request, Response } from 'express';
 import db from '../../db/knex';
+import { postProviderLogin } from '../../controllers/authController';
 import { initDb } from '../../db/initDb';
 import {
   getOrCreateAddCoSupervisor,
@@ -112,6 +114,66 @@ afterEach(async () => {
 after(async () => {
   await db.destroy();
 });
+
+function withEnv<T>(entries: Record<string, string>, fn: () => Promise<T>): Promise<T> {
+  const previous: Record<string, string | undefined> = {};
+  for (const [key, value] of Object.entries(entries)) {
+    previous[key] = process.env[key];
+    process.env[key] = value;
+  }
+  return fn().finally(() => {
+    for (const [key, oldValue] of Object.entries(previous)) {
+      if (oldValue === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = oldValue;
+      }
+    }
+  });
+}
+
+function makeProviderLoginReq(input: {
+  ip: string;
+  secret: string;
+  email: string;
+  sasiId?: string;
+  staffNumber?: string;
+}): Request {
+  const headers: Record<string, string> = {
+    'x-auth-provider-secret': input.secret,
+    'x-auth-user-email': input.email,
+  };
+  if (input.sasiId) headers['x-auth-user-sasi-id'] = input.sasiId;
+  if (input.staffNumber) headers['x-auth-user-staff-number'] = input.staffNumber;
+
+  return {
+    body: {},
+    ip: input.ip,
+    method: 'POST',
+    originalUrl: '/api/v1/auth/provider-login',
+    header(name: string): string | undefined {
+      return headers[name.toLowerCase()];
+    },
+    get(name: string): string | undefined {
+      return headers[name.toLowerCase()];
+    },
+  } as unknown as Request;
+}
+
+function makeResCapture(): Response & { statusCodeCaptured: number; bodyCaptured: unknown } {
+  return {
+    statusCodeCaptured: 200,
+    bodyCaptured: undefined as unknown,
+    status(code: number) {
+      this.statusCodeCaptured = code;
+      return this;
+    },
+    json(body: unknown) {
+      this.bodyCaptured = body;
+      return this;
+    },
+  } as unknown as Response & { statusCodeCaptured: number; bodyCaptured: unknown };
+}
 
 async function createFixtureCase(): Promise<{ caseId: number; studentActor: Actor }> {
   const studentNumber = `T${Date.now()}${Math.floor(Math.random() * 10000)}`;
@@ -489,4 +551,65 @@ test('APPOINT_ARBITER enforces review order and supports rework', async () => {
 
   const approvedEntry = await getModuleEntry(caseId, 'appoint_arbiter');
   assert.equal(approvedEntry?.status, 'approved');
+});
+
+test('provider-login succeeds in trusted_header mode with trusted source and valid secret', async () => {
+  await withEnv(
+    {
+      AUTH_PROVIDER: 'trusted_header',
+      AUTH_PROVIDER_SHARED_SECRET: 'test-secret',
+      AUTH_PROVIDER_TRUSTED_PROXY_IPS: '127.0.0.1,::1',
+    },
+    async () => {
+      const req = makeProviderLoginReq({
+        ip: '127.0.0.1',
+        secret: 'test-secret',
+        email: 'adriaan.engelbrecht@example.com',
+      });
+      const res = makeResCapture();
+      await postProviderLogin(req, res);
+      assert.equal(res.statusCodeCaptured, 200);
+      assert.ok(typeof (res.bodyCaptured as { token?: string }).token === 'string');
+    },
+  );
+});
+
+test('provider-login fails with bad shared secret', async () => {
+  await withEnv(
+    {
+      AUTH_PROVIDER: 'trusted_header',
+      AUTH_PROVIDER_SHARED_SECRET: 'test-secret',
+      AUTH_PROVIDER_TRUSTED_PROXY_IPS: '127.0.0.1,::1',
+    },
+    async () => {
+      const req = makeProviderLoginReq({
+        ip: '127.0.0.1',
+        secret: 'wrong-secret',
+        email: 'adriaan.engelbrecht@example.com',
+      });
+      const res = makeResCapture();
+      await postProviderLogin(req, res);
+      assert.equal(res.statusCodeCaptured, 401);
+    },
+  );
+});
+
+test('provider-login fails from untrusted source IP', async () => {
+  await withEnv(
+    {
+      AUTH_PROVIDER: 'trusted_header',
+      AUTH_PROVIDER_SHARED_SECRET: 'test-secret',
+      AUTH_PROVIDER_TRUSTED_PROXY_IPS: '127.0.0.1,::1',
+    },
+    async () => {
+      const req = makeProviderLoginReq({
+        ip: '10.10.10.10',
+        secret: 'test-secret',
+        email: 'adriaan.engelbrecht@example.com',
+      });
+      const res = makeResCapture();
+      await postProviderLogin(req, res);
+      assert.equal(res.statusCodeCaptured, 401);
+    },
+  );
 });
