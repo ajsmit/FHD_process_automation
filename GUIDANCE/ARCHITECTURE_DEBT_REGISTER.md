@@ -229,6 +229,14 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
   - retain single-use completion semantics (`status=completed`) and expiry handling.
 - updated invite status feed (`server/src/services/operationsFeedService.ts`) to build invite links from decrypted ciphertext for hardened rows.
 - AD-004 remains In Progress pending production identity provider integration and final role-assignment governance lifecycle.
+32. AD-004 progress update on 2026-03-10 (production identity-provider adapter tranche):
+- introduced provider-mode auth selector (`AUTH_PROVIDER`) with supported modes:
+  - `local_password` (existing credential flow)
+  - `trusted_header` (reverse-proxy/IdP header exchange flow)
+- added provider exchange endpoint `POST /api/v1/auth/provider-login` (`server/src/controllers/authController.ts`, `server/src/api/v1/routes/authRoutes.ts`) gated by shared-secret header validation and trusted identity headers.
+- constrained local password endpoint to local mode: `POST /api/v1/auth/login` returns `404` when provider mode is `trusted_header`.
+- synchronized env templates and runbook docs with provider-mode controls and header/secret configuration keys.
+- AD-004 remains In Progress pending enterprise IdP/proxy rollout hardening and final role-assignment governance lifecycle.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

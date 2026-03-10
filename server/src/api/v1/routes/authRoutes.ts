@@ -3,6 +3,7 @@ import {
   getMe,
   postDevLogin,
   postLogin,
+  postProviderLogin,
   postLogout,
   postLogoutAll,
   postRefresh,
@@ -37,6 +38,7 @@ router.post(
   postDevLogin,
 );
 router.post('/login', loginRateLimit, postLogin);
+router.post('/provider-login', loginRateLimit, postProviderLogin);
 router.post('/refresh', refreshRateLimit, postRefresh);
 router.post('/logout', requireAuth, postLogout);
 router.post('/logout-all', requireAuth, postLogoutAll);

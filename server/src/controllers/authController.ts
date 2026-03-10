@@ -3,6 +3,11 @@ import db from '../db/knex';
 import { logAuthAuditEvent } from '../auth/auditLogService';
 import { hashPassword, verifyPassword } from '../auth/passwordService';
 import {
+  parseTrustedHeaderIdentity,
+  resolveAuthProvider,
+  verifyProviderSharedSecret,
+} from '../auth/providerAuthService';
+import {
   issueSessionTokens,
   revokeAllUserRefreshTokens,
   revokeRefreshToken,
@@ -87,6 +92,10 @@ export async function postDevLogin(req: Request, res: Response): Promise<void> {
 }
 
 export async function postLogin(req: Request, res: Response): Promise<void> {
+  if (resolveAuthProvider() !== 'local_password') {
+    res.status(404).json({ message: 'Not found.' });
+    return;
+  }
   try {
     const identifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
@@ -180,6 +189,107 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
     });
   } catch (error) {
     res.status(500).json({ message: error instanceof Error ? error.message : 'Login failed' });
+  }
+}
+
+export async function postProviderLogin(req: Request, res: Response): Promise<void> {
+  if (resolveAuthProvider() !== 'trusted_header') {
+    res.status(404).json({ message: 'Not found.' });
+    return;
+  }
+
+  if (!verifyProviderSharedSecret(req)) {
+    await logAuthAuditEvent({
+      eventType: 'provider_login_failed_bad_secret',
+      route: req.originalUrl,
+      method: req.method,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') ?? '',
+    });
+    res.status(401).json({ message: 'Provider authentication failed.' });
+    return;
+  }
+
+  try {
+    const identity = parseTrustedHeaderIdentity(req);
+    if (!identity.email && !identity.sasiId && !identity.staffNumber) {
+      res.status(400).json({ message: 'Trusted identity headers are required.' });
+      return;
+    }
+
+    let query = db<UserRow>('users');
+    if (identity.email) {
+      query = query.whereRaw('LOWER(email) = ?', [identity.email]);
+    }
+    if (identity.sasiId) {
+      query = identity.email ? query.orWhere({ sasi_id: identity.sasiId }) : query.where({ sasi_id: identity.sasiId });
+    }
+    if (identity.staffNumber) {
+      query = (identity.email || identity.sasiId)
+        ? query.orWhere({ staff_number: identity.staffNumber })
+        : query.where({ staff_number: identity.staffNumber });
+    }
+
+    const user = await query
+      .first('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'active');
+
+    if (!user) {
+      await logAuthAuditEvent({
+        eventType: 'provider_login_failed_user_not_found',
+        actorSasiId: identity.sasiId || identity.staffNumber || identity.email,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+      });
+      res.status(401).json({ message: 'Provider identity does not map to an active user.' });
+      return;
+    }
+
+    const active = user.active === undefined || user.active === null || user.active === true || Number(user.active) === 1;
+    if (!active) {
+      await logAuthAuditEvent({
+        eventType: 'provider_login_failed_inactive_user',
+        userId: user.id,
+        actorSasiId: user.sasi_id,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+      });
+      res.status(401).json({ message: 'Provider identity does not map to an active user.' });
+      return;
+    }
+
+    const tokens = await issueSessionTokens(toTokenUser(user), {
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') ?? '',
+    });
+
+    await logAuthAuditEvent({
+      eventType: 'provider_login_success',
+      userId: user.id,
+      actorSasiId: user.sasi_id,
+      route: req.originalUrl,
+      method: req.method,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') ?? '',
+    });
+
+    res.status(200).json({
+      token: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
+      user: {
+        id: user.id,
+        sasiId: user.sasi_id,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'Provider login failed' });
   }
 }
 

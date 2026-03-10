@@ -147,6 +147,8 @@ Server (`server/.env`):
 - `EXTERNAL_INVITE_TOKEN_ENCRYPTION_KEY` (required in production; 32-byte base64 or 64-char hex)
 - `JWT_SECRET`, `JWT_EXPIRES_IN`
 - `REFRESH_TOKEN_TTL_DAYS`, `DEMO_USER_PASSWORD`
+- `AUTH_PROVIDER` (`local_password` or `trusted_header`)
+- `AUTH_PROVIDER_SHARED_SECRET` + trusted-header names when using `trusted_header`
 - `AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `CORS_ALLOWED_ORIGINS`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (required for automatic external profile invite email delivery)
 
@@ -196,7 +198,8 @@ See `PROJECT_IMPLEMENTATION_PLAN.md` for phased scope.
 ## Auth (Current)
 - Transition and protected workflow/internal endpoints require JWT Bearer authentication and server-side actor-to-case authorization checks.
 - Login/session endpoints:
-  - `POST /api/v1/auth/login` (identifier + password; identifier supports `sasi_id`, `staff_number`, or `email`)
+  - `POST /api/v1/auth/login` (identifier + password; available when `AUTH_PROVIDER=local_password`)
+  - `POST /api/v1/auth/provider-login` (trusted-header identity exchange; available when `AUTH_PROVIDER=trusted_header`)
   - `POST /api/v1/auth/refresh` (refresh token rotation)
   - `POST /api/v1/auth/logout` (revoke current refresh token)
   - `POST /api/v1/auth/logout-all` (revoke all refresh tokens for actor)

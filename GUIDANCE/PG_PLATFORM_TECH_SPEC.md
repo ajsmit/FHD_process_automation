@@ -309,9 +309,14 @@ Writes:
 
 ### 5.3 Auth
 - `POST /api/v1/auth/dev-login` (development identity simulation; when `ENABLE_DEV_AUTH=false`, route returns `404 Not Found`)
+- `POST /api/v1/auth/login` (local password mode; `AUTH_PROVIDER=local_password`)
+- `POST /api/v1/auth/provider-login` (trusted-header provider mode; `AUTH_PROVIDER=trusted_header`)
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/logout-all`
 - `GET /api/v1/auth/me` (requires Bearer token)
 - auth endpoint protection:
-  - `/auth/dev-login` is rate-limited (window/max via `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX_REQUESTS`).
+  - `/auth/dev-login`, `/auth/login`, and `/auth/provider-login` are rate-limited (window/max via `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX_REQUESTS`).
 
 ### 5.4 Legacy APIs (Deprecated / Disabled By Default)
 - `GET/POST /api/v1/title-registrations/*` (legacy plural route family)
