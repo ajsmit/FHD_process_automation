@@ -378,7 +378,7 @@ test('CHANGE_TITLE final approval updates canonical ROTT thesis title', async ()
 test('CHANGE_SUPERVISOR final approval updates canonical supervision roster', async () => {
   const { caseId, studentActor } = await createFixtureCase();
   await updateChangeSupervisor(studentActor, caseId, {
-    'Role To Change': 'Primary supervisor',
+    'Role To Change': 'Primary Supervisor',
     'Outgoing Academic': 'AJ Smit',
     'Incoming Academic': 'Albertus Smit',
     'Incoming Academic Qualification': 'PhD',

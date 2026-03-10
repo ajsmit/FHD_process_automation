@@ -181,5 +181,5 @@ Exit criteria:
 5. Completed 2026-03-10 (AD-017): deployed zod-based request boundary validation middleware/schemas across auth, workflow, directory, SASI, and legacy phase1/title-registration route surfaces.
 6. Completed 2026-03-10 (AD-016): expanded server coverage with controller smoke, middleware auth/validation, and API route smoke tests alongside existing service-level tests.
 7. Completed 2026-03-10 (AD-018): standardized controller error handling via centralized error classes/middleware and structured logging with unified `{ message, code, details }` responses.
-8. Address AD-010: eliminate client/server DTO drift via generated/shared API contracts.
+8. Completed 2026-03-10 (AD-010): eliminated client/server DTO enum drift by moving shared workflow contract types to `@fhd/common-types` and wiring both server/client to the shared canonical source.
 9. Completed 2026-03-10 (AD-007): finalized service-boundary decomposition with `rottCaseService`, `mouService`, and `supervisorProfileService`, leaving `titleRegistrationWorkflowService.ts` as composition façade.
