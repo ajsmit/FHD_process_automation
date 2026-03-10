@@ -43,9 +43,41 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - added automated transition gate tests (`titleRegistrationTransitions.test.ts`)
   - added automated PDF smoke tests (`pdfGeneration.test.ts`)
   - wired server test runner (`npm run test --workspace=server`)
+  - added integration tests for change-request submit gates + canonical writeback:
+    - `CHANGE_TITLE`
+    - `CHANGE_SUPERVISOR`
+    - `ADD_CO_SUPERVISOR`
+  - added Phase-B rework/order/audit assertions for:
+    - `INTENTION_TO_SUBMIT`
+    - `APPOINT_EXAMINERS`
+    - `CHANGE_EXAMINERS`
+    - `EXAMINER_SUMMARY_CV`
+    - `APPOINT_ARBITER`
+  - module-entry audit visibility assertions now included for returned/approved state transitions in integration tests.
 - AD-004 security-coverage slice completed (partial):
   - protected key non-transition workflow endpoints with JWT + workflow authorization middleware
   - added case-scoped/profile-scoped authz checks for workflow operations
+  - expanded JWT enforcement to previously open internal route families:
+    - `/api/v1/directory/{departments,staff,external-academics,external-supervisors,external-academics/invite}`
+    - `/api/v1/sasi/students/search`
+    - `/api/v1/title-registrations/*`
+  - aligned disabled dev-login behavior to `404 Not Found` when `ENABLE_DEV_AUTH=false`
+  - added auth endpoint rate limiting (`AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`) on `/api/v1/auth/dev-login`
+  - replaced permissive CORS with environment-driven allowlist (`CORS_ALLOWED_ORIGINS`) in server bootstrap
+- AD-011 repository hygiene slice completed:
+  - explicit ignore contract added for generated/runtime artifacts (`client/.next`, `client/.next_backup*`, `server/dist`, `server/dev.sqlite3`)
+  - tracked generated artifacts removed from git index (`--cached`, local files retained)
+  - CI guard added (`scripts/check-generated-artifacts.sh`) and wired in `.github/workflows/main.yml`
+- AD-015 guidance-artifact governance slice completed:
+  - `.md` declared canonical guidance source in index/spec contracts
+  - tracked guidance export artifacts removed from git index (`GUIDANCE/*.html`, `GUIDANCE/*_files/**`)
+  - guardrail extended to fail CI when generated guidance artifacts are tracked
+- AD-012 UI decomposition slice completed:
+  - decomposed dashboard page/panels into bounded components and domain hooks (`page.tsx` reduced from 2411 to 446 lines)
+  - split module panel monolith into `PhaseBModulePanels.tsx` + `ChangeRequestModulePanels.tsx`
+  - extracted shared panel helpers (`workflowModulePanelTypes.ts`, `moduleFieldRenderers.tsx`, `moduleActionButtons.tsx`)
+  - refactored module loading to `moduleLoaders` dispatch map in `useDashboardOrchestration.ts`
+  - enforced CI size guardrails for page/hook/panel/helper files (`scripts/check-dashboard-sizes.sh`)
 
 ### 2.2 In progress
 - Deep role-symmetric refactor of remaining repeated role logic in UI/controller wiring
@@ -58,10 +90,20 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 - Phase-B next-wave modules baseline implementation:
   - `INTENTION_TO_SUBMIT`
   - `APPOINT_EXAMINERS`
+  - `CHANGE_TITLE`
+  - `CHANGE_SUPERVISOR`
+  - `ADD_CO_SUPERVISOR`
   - `CHANGE_EXAMINERS`
   - `EXAMINER_SUMMARY_CV`
   - `APPOINT_ARBITER`
-  - implemented with canonical tables + prefill + prerequisite gates + save/submit endpoints + UI draft cards
+  - implemented with canonical tables + prefill + prerequisite gates + save/submit/review/print endpoints + UI cards
+  - now extended with role-scoped approval state machines and printable PDF generation per module
+- AD-013 migration-first schema tranche:
+  - introduced consolidated schema migration `server/src/db/migrations/20260310152000_consolidate_workflow_schema.ts`
+  - reduced `server/src/db/initDb.ts` to migration runner + idempotent seed orchestration
+  - added explicit migration execution command `npm run db:migrate --workspace=server` via `server/src/db/runMigrations.ts`
+  - extracted seed implementation to `server/src/db/seedDemoData.ts`; `initDb.ts` now remains migration + seed wiring orchestration only
+  - documented mandatory migration run order in `PG_PLATFORM_TECH_SPEC.md` and `WORKFLOW_ORCHESTRATION_RUNBOOK.md`
 
 ### 2.3 Not started (next-wave modules)
 - Remaining change/progression forms from `ridiculous_forms`
@@ -118,11 +160,11 @@ Exit criteria:
 - Service-layer regression escape rate after refactors (target: zero)
 
 ## 6. Immediate Next Actions
-1. Finish role-symmetric refactor in ROTT supervisor cards and supporting mapping logic.
-2. Complete UI-contract rollout (`1/6/12` grid + required cues + section headers) in active modules.
-3. Start `INTENTION_TO_SUBMIT` module implementation from current canonical fields/tables.
-4. Extend Phase-B next-wave modules from student-draft baseline to full role approval state machines.
-5. Complete post-AD-001 decomposition (contracts extraction + bounded service split + tests).
-6. Extend JWT/identity-bound authorization coverage beyond transition endpoints, including module operations and read APIs by role.
-7. Replace dev-login simulation path with production identity provider/session model.
-8. Add module-level regression checklist to CI/manual release gate.
+1. Completed 2026-03-10 (AD-012): decomposed dashboard page/orchestration/module panels into bounded components/hooks and enforced CI size guardrails.
+2. Completed 2026-03-10 (AD-013): migrated canonical schema evolution to versioned migrations, reduced `initDb` to orchestration-only, and documented migration run order.
+3. Completed 2026-03-10 (AD-014): introduced registry-driven module lifecycle primitives to remove repeated save/submit/review/print orchestration logic across module services.
+4. Address AD-004: replace dev-login simulation path with production identity/session model and finish full route-surface authorization parity.
+5. Completed 2026-03-10 (AD-017): deployed zod-based request boundary validation middleware/schemas across auth, workflow, directory, SASI, and legacy phase1/title-registration route surfaces.
+6. Completed 2026-03-10 (AD-016): expanded server coverage with controller smoke, middleware auth/validation, and API route smoke tests alongside existing service-level tests.
+7. Address AD-010: eliminate client/server DTO drift via generated/shared API contracts.
+8. Complete post-AD-001 decomposition by splitting remaining `titleRegistrationWorkflowService.ts` bounded domains (ROTT case orchestration vs MOU vs profiles).
