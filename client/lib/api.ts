@@ -334,10 +334,24 @@ export interface ModuleFormRecord {
   id: number;
   case_id: number;
   completion_percent: number;
-  status: 'draft' | 'submitted';
+  status:
+    | 'draft'
+    | 'submitted'
+    | 'awaiting_supervisor_review'
+    | 'awaiting_dept_review'
+    | 'awaiting_chairperson_review'
+    | 'awaiting_faculty_review'
+    | 'returned_by_supervisor'
+    | 'returned_by_dept'
+    | 'returned_by_chairperson'
+    | 'returned_by_faculty'
+    | 'approved';
+  pdf_path: string | null;
   submitted_at: string | null;
   updated_at: string;
 }
+
+export type ModuleReviewDecision = 'approved' | 'returned';
 
 export interface IntentionToSubmitFormData {
   'Student Full Name': string;
@@ -429,10 +443,51 @@ export interface AppointArbiterFormData {
   'Arbiter conflict disclosure': string;
 }
 
+export interface ChangeTitleFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Current Thesis Title': string;
+  'Proposed Thesis Title': string;
+  'Change Rationale': string;
+  'Ethics Impact': string;
+  'Supervisor Comments': string;
+}
+
+export interface ChangeSupervisorFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Current Supervision Roster': string;
+  'Role To Change': '' | 'Primary Supervisor' | 'Administrative Supervisor' | 'Co-supervisor 1' | 'Co-supervisor 2';
+  'Outgoing Academic': string;
+  'Incoming Academic': string;
+  'Incoming Academic Qualification': string;
+  'Incoming Academic Is UWC Internal': 'Yes' | 'No';
+  'Change Rationale': string;
+  'Continuity Plan': string;
+}
+
+export interface AddCoSupervisorFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Thesis Title': string;
+  Supervisor: string;
+  'Current Co-supervisors': string;
+  'Proposed Co-supervisor': string;
+  'Proposed Co-supervisor Qualification': string;
+  'Proposed Co-supervisor Is UWC Internal': 'Yes' | 'No';
+  'Motivation For Addition': string;
+}
+
 interface AuthUser {
   id: number;
   sasiId: string;
-  role: 'student' | 'supervisor' | 'admin';
+  role: 'student' | 'supervisor' | 'dept_hd_rep' | 'dept_chairperson' | 'faculty_hd_rep' | 'system_admin' | 'admin';
   firstName: string;
   lastName: string;
 }
@@ -564,7 +619,8 @@ export async function checkSasi(studentNumber: string): Promise<{
   caseRecord?: TitleRegistrationCase;
   formData?: FormData;
 }> {
-  return request(`/title-registration/sasi/${studentNumber}/check`);
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/sasi/${studentNumber}/check`, { headers });
 }
 
 export async function patchForm(caseId: number, patch: Partial<FormData>): Promise<{ case: TitleRegistrationCase; formData: FormData }> {
@@ -752,6 +808,29 @@ export async function submitIntentionToSubmit(caseId: number): Promise<{ record:
   return request(`/title-registration/cases/${caseId}/intention-to-submit/submit`, { method: 'POST', headers });
 }
 
+export async function reviewIntentionToSubmitBySupervisor(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/intention-to-submit/supervisor-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewIntentionToSubmitByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/intention-to-submit/dept-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function printIntentionToSubmit(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/intention-to-submit/print`, { method: 'POST', headers });
+}
+
 export async function getAppointExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
   const headers = await authHeadersForActor(demoActorSasiIds.student);
   return request(`/title-registration/cases/${caseId}/appoint-examiners`, { headers });
@@ -761,13 +840,45 @@ export async function patchAppointExaminers(
   caseId: number,
   patch: Partial<AppointExaminersFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/appoint-examiners`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitAppointExaminers(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/appoint-examiners/submit`, { method: 'POST', headers });
+}
+
+export async function reviewAppointExaminersByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/appoint-examiners/dept-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewAppointExaminersByChair(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.chair);
+  return request(`/title-registration/cases/${caseId}/appoint-examiners/chairperson-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewAppointExaminersByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/appoint-examiners/faculty-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function printAppointExaminers(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/appoint-examiners/print`, { method: 'POST', headers });
 }
 
 export async function getChangeExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
@@ -779,13 +890,45 @@ export async function patchChangeExaminers(
   caseId: number,
   patch: Partial<ChangeExaminersFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/change-examiners`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitChangeExaminers(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/change-examiners/submit`, { method: 'POST', headers });
+}
+
+export async function reviewChangeExaminersByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/change-examiners/dept-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewChangeExaminersByChair(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.chair);
+  return request(`/title-registration/cases/${caseId}/change-examiners/chairperson-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewChangeExaminersByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/change-examiners/faculty-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function printChangeExaminers(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/change-examiners/print`, { method: 'POST', headers });
 }
 
 export async function getExaminerSummaryCv(caseId: number): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
@@ -797,13 +940,36 @@ export async function patchExaminerSummaryCv(
   caseId: number,
   patch: Partial<ExaminerSummaryCvFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/examiner-summary-cv`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitExaminerSummaryCv(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/examiner-summary-cv/submit`, { method: 'POST', headers });
+}
+
+export async function reviewExaminerSummaryCvByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/examiner-summary-cv/dept-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewExaminerSummaryCvByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/examiner-summary-cv/faculty-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function printExaminerSummaryCv(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/examiner-summary-cv/print`, { method: 'POST', headers });
 }
 
 export async function getAppointArbiter(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
@@ -815,18 +981,165 @@ export async function patchAppointArbiter(
   caseId: number,
   patch: Partial<AppointArbiterFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/appoint-arbiter`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitAppointArbiter(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/title-registration/cases/${caseId}/appoint-arbiter/submit`, { method: 'POST', headers });
+}
+
+export async function reviewAppointArbiterByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/appoint-arbiter/dept-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function reviewAppointArbiterByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/appoint-arbiter/faculty-review`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ decision }),
+  });
+}
+
+export async function printAppointArbiter(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/appoint-arbiter/print`, { method: 'POST', headers });
+}
+
+export async function getChangeTitle(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeTitleFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-title`, { headers });
+}
+
+export async function patchChangeTitle(caseId: number, patch: Partial<ChangeTitleFormData>): Promise<{ record: ModuleFormRecord; formData: ChangeTitleFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-title`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
+}
+
+export async function submitChangeTitle(caseId: number): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-title/submit`, { method: 'POST', headers });
+}
+
+export async function reviewChangeTitleBySupervisor(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/change-title/supervisor-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeTitleByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/change-title/dept-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeTitleByChair(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.chair);
+  return request(`/title-registration/cases/${caseId}/change-title/chairperson-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeTitleByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/change-title/faculty-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function printChangeTitle(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-title/print`, { method: 'POST', headers });
+}
+
+export async function getChangeSupervisor(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeSupervisorFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-supervisor`, { headers });
+}
+
+export async function patchChangeSupervisor(
+  caseId: number,
+  patch: Partial<ChangeSupervisorFormData>,
+): Promise<{ record: ModuleFormRecord; formData: ChangeSupervisorFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-supervisor`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
+}
+
+export async function submitChangeSupervisor(caseId: number): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/submit`, { method: 'POST', headers });
+}
+
+export async function reviewChangeSupervisorBySupervisor(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/supervisor-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeSupervisorByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/dept-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeSupervisorByChair(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.chair);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/chairperson-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewChangeSupervisorByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/faculty-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function printChangeSupervisor(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/change-supervisor/print`, { method: 'POST', headers });
+}
+
+export async function getAddCoSupervisor(caseId: number): Promise<{ record: ModuleFormRecord; formData: AddCoSupervisorFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor`, { headers });
+}
+
+export async function patchAddCoSupervisor(caseId: number, patch: Partial<AddCoSupervisorFormData>): Promise<{ record: ModuleFormRecord; formData: AddCoSupervisorFormData }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
+}
+
+export async function submitAddCoSupervisor(caseId: number): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/submit`, { method: 'POST', headers });
+}
+
+export async function reviewAddCoSupervisorBySupervisor(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/supervisor-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewAddCoSupervisorByDept(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.dept);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/dept-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewAddCoSupervisorByChair(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.chair);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/chairperson-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function reviewAddCoSupervisorByFaculty(caseId: number, decision: ModuleReviewDecision): Promise<{ record: ModuleFormRecord }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.faculty);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/faculty-review`, { method: 'POST', headers, body: JSON.stringify({ decision }) });
+}
+
+export async function printAddCoSupervisor(caseId: number): Promise<{ pdfPath: string }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/title-registration/cases/${caseId}/add-co-supervisor/print`, { method: 'POST', headers });
 }
 
 export async function getDirectoryDepartments(faculty?: string): Promise<{ data: DepartmentDirectory[] }> {
   const query = faculty ? `?faculty=${encodeURIComponent(faculty)}` : '';
-  return request(`/directory/departments${query}`);
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/directory/departments${query}`, { headers });
 }
 
 export async function getDirectoryStaff(params?: { department?: string; q?: string; internalOnly?: boolean }): Promise<{ data: StaffDirectory[] }> {
@@ -841,18 +1154,21 @@ export async function getDirectoryStaff(params?: { department?: string; q?: stri
     search.set('internalOnly', 'true');
   }
   const query = search.toString() ? `?${search.toString()}` : '';
-  return request(`/directory/staff${query}`);
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/directory/staff${query}`, { headers });
 }
 
 export async function getExternalAcademics(q?: string): Promise<{ data: ExternalAcademicDirectory[] }> {
   const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
-  return request(`/directory/external-academics${query}`);
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/directory/external-academics${query}`, { headers });
 }
 
 // Backward-compatible alias for legacy naming in existing modules.
 export async function getExternalSupervisors(q?: string): Promise<{ data: ExternalAcademicDirectory[] }> {
   const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
-  return request(`/directory/external-supervisors${query}`);
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  return request(`/directory/external-supervisors${query}`, { headers });
 }
 
 export async function createExternalAcademicInvite(
@@ -860,8 +1176,10 @@ export async function createExternalAcademicInvite(
   role: 'supervisor' | 'admin' | 'co1' | 'co2',
   email: string,
 ): Promise<{ inviteId: number; token: string; inviteLink: string; expiresAt: string; deliveryStatus: 'sent' | 'queued' | 'failed' }> {
+  const headers = await authHeadersForActor(demoActorSasiIds.student);
   return request('/directory/external-academics/invite', {
     method: 'POST',
+    headers,
     body: JSON.stringify({ caseId, role, email }),
   });
 }

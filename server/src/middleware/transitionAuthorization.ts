@@ -1,4 +1,13 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { logAuthAuditEvent } from '../auth/auditLogService';
+import {
+  isAdministrativeRole,
+  isDeptChairpersonRole,
+  isDeptHdRepRole,
+  isFacultyHdRepRole,
+  isLegacyAdminRole,
+  isSystemAdminRole,
+} from '../auth/roleService';
 import db from '../db/knex';
 import type { FormData } from '../services/contracts/titleRegistration';
 
@@ -89,20 +98,33 @@ async function isAuthorizedForAction(req: Request, action: TransitionAction): Pr
     return isAssignedSupervisor(user.firstName, user.lastName, formData);
   }
 
-  if (user.role !== 'admin') {
+  if (!isAdministrativeRole(user.role)) {
     return false;
   }
 
+  if (isSystemAdminRole(user.role)) {
+    return true;
+  }
+
   if (action === 'dept_review' || action === 'dept_send_faculty') {
+    if (isDeptHdRepRole(user.role)) return true;
     return hasSasiStaffRole(user.sasiId, 'dept_fhd_rep', studentDepartment);
   }
   if (action === 'chairperson_sign') {
+    if (isDeptChairpersonRole(user.role)) return true;
     return hasSasiStaffRole(user.sasiId, 'hod', studentDepartment);
   }
   if (action === 'faculty_review') {
+    if (isFacultyHdRepRole(user.role)) return true;
     return hasSasiStaffRole(user.sasiId, 'faculty_fhd_rep');
   }
   if (action === 'reminder') {
+    if (isDeptHdRepRole(user.role) || isFacultyHdRepRole(user.role)) {
+      return true;
+    }
+    if (!isLegacyAdminRole(user.role)) {
+      return false;
+    }
     const dept = await hasSasiStaffRole(user.sasiId, 'dept_fhd_rep', studentDepartment);
     if (dept) return true;
     return hasSasiStaffRole(user.sasiId, 'faculty_fhd_rep');
@@ -115,11 +137,37 @@ export function requireTransitionAuthorization(action: TransitionAction): Reques
     try {
       const authorized = await isAuthorizedForAction(req, action);
       if (!authorized) {
+        await logAuthAuditEvent({
+          eventType: 'authorization_transition_denied',
+          userId: req.authUser?.id,
+          actorSasiId: req.authUser?.sasiId,
+          route: req.originalUrl,
+          method: req.method,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent') ?? '',
+          details: {
+            action,
+            caseId: req.params.caseId ?? '',
+          },
+        });
         res.status(403).json({ message: 'Authenticated actor is not authorized for this case transition.' });
         return;
       }
       next();
     } catch (error) {
+      await logAuthAuditEvent({
+        eventType: 'authorization_transition_check_failed',
+        userId: req.authUser?.id,
+        actorSasiId: req.authUser?.sasiId,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+        details: {
+          action,
+          reason: error instanceof Error ? error.message : 'unknown',
+        },
+      });
       res.status(400).json({ message: error instanceof Error ? error.message : 'Authorization check failed' });
     }
   };

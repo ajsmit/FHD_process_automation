@@ -1,14 +1,49 @@
 import db from '../../db/knex';
+import {
+  isAdministrativeRole,
+  isDeptChairpersonRole,
+  isDeptHdRepRole,
+  isFacultyHdRepRole,
+  isLegacyAdminRole,
+  isSystemAdminRole,
+} from '../../auth/roleService';
+import type { Role } from '../../auth/tokenService';
 import { getCaseById } from '../titleRegistrationWorkflowService';
 import type {
   AppointArbiterFormData,
   AppointExaminersFormData,
   ChangeExaminersFormData,
-  ExaminerSummaryCvFormData,
   FormData,
+  ExaminerSummaryCvFormData,
   IntentionToSubmitFormData,
   ModuleFormRecord,
 } from '../contracts/titleRegistration';
+import {
+  assertModuleHasSubmittedState,
+  getOrCreateModuleRecord,
+  parseJsonObject,
+  printModulePdf,
+  readModuleRecord,
+  reviewModuleRecord,
+  submitModuleRecord,
+  updateModuleRecord,
+} from './moduleLifecycleEngine';
+import type {
+  ModuleLifecycleConfig,
+  ModuleReviewDecision,
+  ModuleStatus,
+  ReviewTransition,
+} from './moduleLifecycleEngine';
+
+export type { ModuleReviewDecision };
+
+interface AuthUserLike {
+  id: number;
+  role: Role;
+  sasiId: string;
+  firstName: string;
+  lastName: string;
+}
 
 type FormTableName =
   | 'intention_to_submit_forms'
@@ -17,8 +52,30 @@ type FormTableName =
   | 'examiner_summary_cv_forms'
   | 'appoint_arbiter_forms';
 
-function parseJsonObject<T>(raw: string): T {
-  return JSON.parse(raw) as T;
+type ModuleName =
+  | 'intention_to_submit'
+  | 'appoint_examiners'
+  | 'change_examiners'
+  | 'examiner_summary_cv'
+  | 'appoint_arbiter';
+
+type RoleAction = 'read' | 'edit' | 'submit' | 'review_supervisor' | 'review_dept' | 'review_chairperson' | 'review_faculty' | 'print';
+type ReviewRoleAction = Exclude<RoleAction, 'read' | 'edit' | 'submit' | 'print'>;
+
+interface NextWaveModuleDataMap {
+  intention_to_submit: IntentionToSubmitFormData;
+  appoint_examiners: AppointExaminersFormData;
+  change_examiners: ChangeExaminersFormData;
+  examiner_summary_cv: ExaminerSummaryCvFormData;
+  appoint_arbiter: AppointArbiterFormData;
+}
+
+interface NextWaveModuleConfig<TData extends object> extends ModuleLifecycleConfig<TData, FormTableName, ModuleName> {
+  ensurePrerequisite: (caseId: number) => Promise<void>;
+  buildPrefill: (input: { actor: AuthUserLike; caseId: number; rottFormData: FormData }) => Promise<TData> | TData;
+  editRole: 'student' | 'supervisor';
+  submitRole: 'student' | 'supervisor';
+  submitTargetStatus: ModuleStatus;
 }
 
 function sanitiseText(value: unknown): string {
@@ -27,6 +84,15 @@ function sanitiseText(value: unknown): string {
 
 function boolFrom(value: unknown): boolean {
   return value === true;
+}
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isNamed(value: string): boolean {
+  const trimmed = value.trim();
+  return Boolean(trimmed) && trimmed.toUpperCase() !== 'NA';
 }
 
 function resolveThesisType(formData: FormData): string {
@@ -45,9 +111,7 @@ function resolveCoSupervisors(formData: FormData): string {
 
   const co1 = sanitiseText(formData['Co-supervisor']);
   const co2 = sanitiseText(formData['Second Co-supervisor']);
-  const names = [co1, co2]
-    .map((value) => value.trim())
-    .filter((value) => value && value.toUpperCase() !== 'NA');
+  const names = [co1, co2].map((value) => value.trim()).filter((value) => isNamed(value));
 
   return names.length > 0 ? names.join('; ') : 'Not applicable';
 }
@@ -78,29 +142,102 @@ function requiredCompletionPercent<T extends object>(formData: T, requiredKeys: 
   return Math.round((completed / requiredKeys.length) * 100);
 }
 
-async function upsertModuleEntry(caseId: number, moduleName: string, status: string, summary: string): Promise<void> {
-  await db('module_entries')
-    .insert({
-      case_id: caseId,
-      module_name: moduleName,
-      status,
-      summary,
-      updated_at: db.fn.now(),
-    })
-    .onConflict(['case_id', 'module_name'])
-    .merge({ status, summary, updated_at: db.fn.now() });
-}
-
-async function readModuleRecord(table: FormTableName, caseId: number): Promise<ModuleFormRecord | undefined> {
-  const record = await db<ModuleFormRecord>(table).where({ case_id: caseId }).first();
-  return record ?? undefined;
-}
-
-async function assertSubmitted(table: FormTableName, caseId: number, label: string): Promise<void> {
-  const record = await readModuleRecord(table, caseId);
-  if (!record || record.status !== 'submitted') {
-    throw new Error(`${label} must be submitted before this module can start.`);
+async function hasSasiStaffRole(sasiId: string, role: string, department?: string): Promise<boolean> {
+  let query = db('sasi_staff').where({ staff_number: sasiId, role });
+  if (department) {
+    query = query.andWhere('department', department);
   }
+  const row = await query.first();
+  return Boolean(row);
+}
+
+function isAssignedSupervisor(actor: AuthUserLike, formData: FormData): boolean {
+  const actorName = normalizeName(`${actor.firstName} ${actor.lastName}`);
+  const candidates = [
+    formData.Supervisor,
+    formData['Administrative Supervisor (Nominal Role)'],
+    formData['Co-supervisor'],
+    formData['Second Co-supervisor'],
+  ]
+    .map((value) => normalizeName(value))
+    .filter((value) => value && value !== 'na');
+  return candidates.includes(actorName);
+}
+
+async function assertModuleAuthorization(actor: AuthUserLike, caseId: number, action: RoleAction): Promise<{ formData: FormData; studentDepartment: string; studentNumber: string }> {
+  const { formData, student } = await getCaseById(caseId);
+  const studentNumber = sanitiseText(formData['Student Number']);
+  const studentDepartment = sanitiseText(student.department);
+
+  if (action === 'read' || action === 'print') {
+    if (actor.role === 'student' && actor.sasiId === studentNumber) {
+      return { formData, studentDepartment, studentNumber };
+    }
+    if (actor.role === 'supervisor' && isAssignedSupervisor(actor, formData)) {
+      return { formData, studentDepartment, studentNumber };
+    }
+    if (isAdministrativeRole(actor.role)) {
+      if (isSystemAdminRole(actor.role)) {
+        return { formData, studentDepartment, studentNumber };
+      }
+      if (isDeptHdRepRole(actor.role) || isDeptChairpersonRole(actor.role) || isFacultyHdRepRole(actor.role)) {
+        return { formData, studentDepartment, studentNumber };
+      }
+      if (!isLegacyAdminRole(actor.role)) {
+        throw new Error('Actor is not authorised for module read/print on this case.');
+      }
+      const [dept, chair, faculty] = await Promise.all([
+        hasSasiStaffRole(actor.sasiId, 'dept_fhd_rep', studentDepartment),
+        hasSasiStaffRole(actor.sasiId, 'hod', studentDepartment),
+        hasSasiStaffRole(actor.sasiId, 'faculty_fhd_rep'),
+      ]);
+      if (dept || chair || faculty) {
+        return { formData, studentDepartment, studentNumber };
+      }
+    }
+    throw new Error('Actor is not authorised for module read/print on this case.');
+  }
+
+  if (action === 'edit' || action === 'submit') {
+    if (actor.role === 'student' && actor.sasiId === studentNumber) {
+      return { formData, studentDepartment, studentNumber };
+    }
+    if (actor.role === 'supervisor' && isAssignedSupervisor(actor, formData)) {
+      return { formData, studentDepartment, studentNumber };
+    }
+    throw new Error('Actor is not authorised for module draft edits/submission on this case.');
+  }
+
+  if (actor.role === 'supervisor' && action === 'review_supervisor' && isAssignedSupervisor(actor, formData)) {
+    return { formData, studentDepartment, studentNumber };
+  }
+
+  if (isAdministrativeRole(actor.role)) {
+    if (isSystemAdminRole(actor.role)) {
+      return { formData, studentDepartment, studentNumber };
+    }
+
+    if (action === 'review_dept') {
+      if (isDeptHdRepRole(actor.role)) return { formData, studentDepartment, studentNumber };
+      if (isLegacyAdminRole(actor.role) && (await hasSasiStaffRole(actor.sasiId, 'dept_fhd_rep', studentDepartment))) {
+        return { formData, studentDepartment, studentNumber };
+      }
+    }
+    if (action === 'review_chairperson') {
+      if (isDeptChairpersonRole(actor.role)) return { formData, studentDepartment, studentNumber };
+      if (isLegacyAdminRole(actor.role) && (await hasSasiStaffRole(actor.sasiId, 'hod', studentDepartment))) {
+        return { formData, studentDepartment, studentNumber };
+      }
+    }
+    if (action === 'review_faculty') {
+      if (isFacultyHdRepRole(actor.role)) return { formData, studentDepartment, studentNumber };
+      if (isLegacyAdminRole(actor.role) && (await hasSasiStaffRole(actor.sasiId, 'faculty_fhd_rep'))) {
+        return { formData, studentDepartment, studentNumber };
+      }
+    }
+  }
+
+  throw new Error('Actor is not authorised for this module transition.');
 }
 
 async function ensureItsPrerequisite(caseId: number): Promise<void> {
@@ -111,26 +248,34 @@ async function ensureItsPrerequisite(caseId: number): Promise<void> {
 }
 
 async function ensureAppointExaminersPrerequisite(caseId: number): Promise<void> {
-  await assertSubmitted('intention_to_submit_forms', caseId, 'INTENTION_TO_SUBMIT');
+  await assertModuleHasSubmittedState('intention_to_submit_forms', caseId, 'INTENTION_TO_SUBMIT');
+  const its = await readModuleRecord('intention_to_submit_forms', caseId);
+  if (!its || its.status !== 'approved') {
+    throw new Error('APPOINT_EXAMINERS can start only after INTENTION_TO_SUBMIT is approved.');
+  }
 }
 
 async function ensureChangeExaminersPrerequisite(caseId: number): Promise<void> {
-  await assertSubmitted('appoint_examiners_forms', caseId, 'APPOINT_EXAMINERS');
+  await assertModuleHasSubmittedState('appoint_examiners_forms', caseId, 'APPOINT_EXAMINERS');
+  const appoint = await readModuleRecord('appoint_examiners_forms', caseId);
+  if (!appoint || appoint.status !== 'approved') {
+    throw new Error('CHANGE_EXAMINERS can start only after APPOINT_EXAMINERS is approved.');
+  }
 }
 
 async function ensureSummaryPrerequisite(caseId: number): Promise<void> {
   const appoint = await readModuleRecord('appoint_examiners_forms', caseId);
   const change = await readModuleRecord('change_examiners_forms', caseId);
-  if ((appoint?.status ?? '') !== 'submitted' && (change?.status ?? '') !== 'submitted') {
-    throw new Error('EXAMINER_SUMMARY_CV can start only after APPOINT_EXAMINERS or CHANGE_EXAMINERS is submitted.');
+  if ((appoint?.status ?? '') !== 'approved' && (change?.status ?? '') !== 'approved') {
+    throw new Error('EXAMINER_SUMMARY_CV can start only after APPOINT_EXAMINERS or CHANGE_EXAMINERS is approved.');
   }
 }
 
 async function ensureArbiterPrerequisite(caseId: number): Promise<void> {
   const appoint = await readModuleRecord('appoint_examiners_forms', caseId);
   const change = await readModuleRecord('change_examiners_forms', caseId);
-  if ((appoint?.status ?? '') !== 'submitted' && (change?.status ?? '') !== 'submitted') {
-    throw new Error('APPOINT_ARBITER can start only after APPOINT_EXAMINERS or CHANGE_EXAMINERS is submitted.');
+  if ((appoint?.status ?? '') !== 'approved' && (change?.status ?? '') !== 'approved') {
+    throw new Error('APPOINT_ARBITER can start only after APPOINT_EXAMINERS or CHANGE_EXAMINERS is approved.');
   }
 }
 
@@ -330,204 +475,374 @@ function arbiterCompletion(formData: AppointArbiterFormData): number {
   ]);
 }
 
-async function getOrCreateRecord<T extends object>(
-  table: FormTableName,
-  caseId: number,
-  moduleName: string,
-  prefill: T,
-  completionCalculator: (data: T) => number,
-): Promise<{ record: ModuleFormRecord; formData: T }> {
-  let record = await db<ModuleFormRecord>(table).where({ case_id: caseId }).first();
-  if (!record) {
-    const completionPercent = completionCalculator(prefill);
-    const [id] = await db(table).insert({
-      case_id: caseId,
-      form_data_json: JSON.stringify(prefill),
-      completion_percent: completionPercent,
-      status: 'draft',
-    });
-    record = await db<ModuleFormRecord>(table).where({ id }).first();
-    if (!record) {
-      throw new Error(`Failed to create ${moduleName} module record.`);
-    }
-  }
+const NEXT_WAVE_REVIEW_TRANSITIONS: Record<ModuleName, Partial<Record<ReviewRoleAction, ReviewTransition>>> = {
+  intention_to_submit: {
+    review_supervisor: {
+      fromStatus: 'awaiting_supervisor_review',
+      approvedStatus: 'awaiting_dept_review',
+      returnedStatus: 'returned_by_supervisor',
+    },
+    review_dept: {
+      fromStatus: 'awaiting_dept_review',
+      approvedStatus: 'approved',
+      returnedStatus: 'returned_by_dept',
+    },
+  },
+  appoint_examiners: {
+    review_dept: {
+      fromStatus: 'awaiting_dept_review',
+      approvedStatus: 'awaiting_chairperson_review',
+      returnedStatus: 'returned_by_dept',
+    },
+    review_chairperson: {
+      fromStatus: 'awaiting_chairperson_review',
+      approvedStatus: 'awaiting_faculty_review',
+      returnedStatus: 'returned_by_chairperson',
+    },
+    review_faculty: {
+      fromStatus: 'awaiting_faculty_review',
+      approvedStatus: 'approved',
+      returnedStatus: 'returned_by_faculty',
+    },
+  },
+  change_examiners: {
+    review_dept: {
+      fromStatus: 'awaiting_dept_review',
+      approvedStatus: 'awaiting_chairperson_review',
+      returnedStatus: 'returned_by_dept',
+    },
+    review_chairperson: {
+      fromStatus: 'awaiting_chairperson_review',
+      approvedStatus: 'awaiting_faculty_review',
+      returnedStatus: 'returned_by_chairperson',
+    },
+    review_faculty: {
+      fromStatus: 'awaiting_faculty_review',
+      approvedStatus: 'approved',
+      returnedStatus: 'returned_by_faculty',
+    },
+  },
+  examiner_summary_cv: {
+    review_dept: {
+      fromStatus: 'awaiting_dept_review',
+      approvedStatus: 'awaiting_faculty_review',
+      returnedStatus: 'returned_by_dept',
+    },
+    review_faculty: {
+      fromStatus: 'awaiting_faculty_review',
+      approvedStatus: 'approved',
+      returnedStatus: 'returned_by_faculty',
+    },
+  },
+  appoint_arbiter: {
+    review_dept: {
+      fromStatus: 'awaiting_dept_review',
+      approvedStatus: 'awaiting_faculty_review',
+      returnedStatus: 'returned_by_dept',
+    },
+    review_faculty: {
+      fromStatus: 'awaiting_faculty_review',
+      approvedStatus: 'approved',
+      returnedStatus: 'returned_by_faculty',
+    },
+  },
+};
 
-  const formData = parseJsonObject<T>(record.form_data_json);
-  const summary = record.status === 'submitted'
-    ? `${moduleName} submitted.`
-    : `${moduleName} draft in progress (${record.completion_percent}%).`;
-  const moduleStatus = record.status === 'submitted' ? 'approved' : 'in_progress';
-  await upsertModuleEntry(caseId, moduleName, moduleStatus, summary);
-  return { record, formData };
+const NEXT_WAVE_MODULE_REGISTRY: { [K in ModuleName]: NextWaveModuleConfig<NextWaveModuleDataMap[K]> } = {
+  intention_to_submit: {
+    table: 'intention_to_submit_forms',
+    moduleName: 'intention_to_submit',
+    title: 'Intention to Submit',
+    completionCalculator: itsCompletion,
+    ensurePrerequisite: ensureItsPrerequisite,
+    buildPrefill: ({ rottFormData }) => defaultItsFromRott(rottFormData),
+    editRole: 'student',
+    submitRole: 'student',
+    submitTargetStatus: 'awaiting_supervisor_review',
+  },
+  appoint_examiners: {
+    table: 'appoint_examiners_forms',
+    moduleName: 'appoint_examiners',
+    title: 'Appointment of Examiners',
+    completionCalculator: appointExaminersCompletion,
+    ensurePrerequisite: ensureAppointExaminersPrerequisite,
+    buildPrefill: ({ rottFormData }) => defaultAppointExaminersFromRott(rottFormData),
+    editRole: 'supervisor',
+    submitRole: 'supervisor',
+    submitTargetStatus: 'awaiting_dept_review',
+  },
+  change_examiners: {
+    table: 'change_examiners_forms',
+    moduleName: 'change_examiners',
+    title: 'Change of Examiners',
+    completionCalculator: changeExaminersCompletion,
+    ensurePrerequisite: ensureChangeExaminersPrerequisite,
+    buildPrefill: async ({ actor, caseId, rottFormData }) => {
+      const appoint = await getOrCreateModule('appoint_examiners', actor, caseId);
+      return defaultChangeExaminers(rottFormData, appoint.formData);
+    },
+    editRole: 'supervisor',
+    submitRole: 'supervisor',
+    submitTargetStatus: 'awaiting_dept_review',
+  },
+  examiner_summary_cv: {
+    table: 'examiner_summary_cv_forms',
+    moduleName: 'examiner_summary_cv',
+    title: 'Examiner Summary CV',
+    completionCalculator: examinerSummaryCompletion,
+    ensurePrerequisite: ensureSummaryPrerequisite,
+    buildPrefill: async ({ caseId, rottFormData }) => {
+      const changeRecord = await readModuleRecord('change_examiners_forms', caseId);
+      const appointRecord = await readModuleRecord('appoint_examiners_forms', caseId);
+      const summarySource = changeRecord?.status === 'approved'
+        ? parseJsonObject<ChangeExaminersFormData>(changeRecord.form_data_json)['Current examiner panel summary']
+        : appointRecord
+          ? examinersPanelSummary(parseJsonObject<AppointExaminersFormData>(appointRecord.form_data_json))
+          : '';
+      return defaultExaminerSummary(rottFormData, summarySource);
+    },
+    editRole: 'supervisor',
+    submitRole: 'supervisor',
+    submitTargetStatus: 'awaiting_dept_review',
+  },
+  appoint_arbiter: {
+    table: 'appoint_arbiter_forms',
+    moduleName: 'appoint_arbiter',
+    title: 'Appointment of Arbiter',
+    completionCalculator: arbiterCompletion,
+    ensurePrerequisite: ensureArbiterPrerequisite,
+    buildPrefill: async ({ caseId, rottFormData }) => {
+      const changeRecord = await readModuleRecord('change_examiners_forms', caseId);
+      const appointRecord = await readModuleRecord('appoint_examiners_forms', caseId);
+      const panelSummary = changeRecord?.status === 'approved'
+        ? parseJsonObject<ChangeExaminersFormData>(changeRecord.form_data_json)['Current examiner panel summary']
+        : appointRecord
+          ? examinersPanelSummary(parseJsonObject<AppointExaminersFormData>(appointRecord.form_data_json))
+          : '';
+      return defaultArbiter(rottFormData, panelSummary);
+    },
+    editRole: 'supervisor',
+    submitRole: 'supervisor',
+    submitTargetStatus: 'awaiting_dept_review',
+  },
+};
+
+function getModuleConfig<K extends ModuleName>(moduleName: K): NextWaveModuleConfig<NextWaveModuleDataMap[K]> {
+  return NEXT_WAVE_MODULE_REGISTRY[moduleName];
 }
 
-async function updateRecord<T extends object>(
-  table: FormTableName,
-  caseId: number,
-  moduleName: string,
-  patch: Partial<T>,
-  getter: (id: number) => Promise<{ record: ModuleFormRecord; formData: T }>,
-  completionCalculator: (data: T) => number,
-): Promise<{ record: ModuleFormRecord; formData: T }> {
-  const { record, formData } = await getter(caseId);
-  if (record.status === 'submitted') {
-    throw new Error(`${moduleName} is already submitted.`);
+function getReviewTransition(moduleName: ModuleName, roleAction: ReviewRoleAction): ReviewTransition {
+  const transition = NEXT_WAVE_REVIEW_TRANSITIONS[moduleName][roleAction];
+  if (!transition) {
+    throw new Error(`${moduleName} does not support ${roleAction} transitions.`);
   }
-
-  const merged = { ...formData, ...patch } as T;
-  const completionPercent = completionCalculator(merged);
-  await db(table).where({ id: record.id }).update({
-    form_data_json: JSON.stringify(merged),
-    completion_percent: completionPercent,
-    updated_at: db.fn.now(),
-  });
-
-  const updated = await db<ModuleFormRecord>(table).where({ id: record.id }).first();
-  if (!updated) {
-    throw new Error(`Failed to update ${moduleName}.`);
-  }
-
-  await upsertModuleEntry(caseId, moduleName, 'in_progress', `${moduleName} draft in progress (${completionPercent}%).`);
-  return { record: updated, formData: merged };
+  return transition;
 }
 
-async function submitRecord<T extends object>(
-  table: FormTableName,
+async function getOrCreateModule<K extends ModuleName>(
+  moduleName: K,
+  actor: AuthUserLike,
   caseId: number,
-  moduleName: string,
-  getter: (id: number) => Promise<{ record: ModuleFormRecord; formData: T }>,
+): Promise<{ record: ModuleFormRecord; formData: NextWaveModuleDataMap[K] }> {
+  await assertModuleAuthorization(actor, caseId, 'read');
+  const config = getModuleConfig(moduleName);
+  await config.ensurePrerequisite(caseId);
+  const { formData: rottFormData } = await getCaseById(caseId);
+  const prefill = await config.buildPrefill({ actor, caseId, rottFormData });
+  return getOrCreateModuleRecord(caseId, config, prefill);
+}
+
+async function updateModule<K extends ModuleName>(
+  moduleName: K,
+  actor: AuthUserLike,
+  caseId: number,
+  patch: Partial<NextWaveModuleDataMap[K]>,
+): Promise<{ record: ModuleFormRecord; formData: NextWaveModuleDataMap[K] }> {
+  await assertModuleAuthorization(actor, caseId, 'edit');
+  const config = getModuleConfig(moduleName);
+  if (actor.role !== config.editRole) {
+    throw new Error(`Only an assigned ${config.editRole} can edit ${moduleName.toUpperCase()} draft data.`);
+  }
+  return updateModuleRecord(caseId, config, patch, (id) => getOrCreateModule(moduleName, actor, id));
+}
+
+async function submitModule<K extends ModuleName>(moduleName: K, actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  await assertModuleAuthorization(actor, caseId, 'submit');
+  const config = getModuleConfig(moduleName);
+  if (actor.role !== config.submitRole) {
+    throw new Error(`Only an assigned ${config.submitRole} can submit ${moduleName.toUpperCase()}.`);
+  }
+  return submitModuleRecord(caseId, config, (id) => getOrCreateModule(moduleName, actor, id), config.submitTargetStatus);
+}
+
+async function reviewModule<K extends ModuleName>(
+  moduleName: K,
+  actor: AuthUserLike,
+  caseId: number,
+  decision: ModuleReviewDecision,
+  roleAction: ReviewRoleAction,
 ): Promise<ModuleFormRecord> {
-  const { record } = await getter(caseId);
-  if (record.completion_percent < 100) {
-    throw new Error(`${moduleName} is incomplete. Save all required fields before submit.`);
-  }
-
-  await db(table).where({ id: record.id }).update({
-    status: 'submitted',
-    submitted_at: db.fn.now(),
-    updated_at: db.fn.now(),
-  });
-
-  await upsertModuleEntry(caseId, moduleName, 'approved', `${moduleName} submitted and ready for downstream workflow.`);
-
-  const updated = await db<ModuleFormRecord>(table).where({ id: record.id }).first();
-  if (!updated) {
-    throw new Error(`Failed to submit ${moduleName}.`);
-  }
-
-  return updated;
+  await assertModuleAuthorization(actor, caseId, roleAction);
+  return reviewModuleRecord(caseId, getModuleConfig(moduleName), decision, getReviewTransition(moduleName, roleAction));
 }
 
-export async function getOrCreateIntentionToSubmit(caseId: number): Promise<{ record: ModuleFormRecord; formData: IntentionToSubmitFormData }> {
-  await ensureItsPrerequisite(caseId);
-  const { formData } = await getCaseById(caseId);
-  return getOrCreateRecord('intention_to_submit_forms', caseId, 'intention_to_submit', defaultItsFromRott(formData), itsCompletion);
+async function printModule<K extends ModuleName>(moduleName: K, actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  const auth = await assertModuleAuthorization(actor, caseId, 'print');
+  return printModulePdf(caseId, getModuleConfig(moduleName), auth.studentNumber);
+}
+
+export async function getOrCreateIntentionToSubmit(actor: AuthUserLike, caseId: number): Promise<{ record: ModuleFormRecord; formData: IntentionToSubmitFormData }> {
+  return getOrCreateModule('intention_to_submit', actor, caseId);
 }
 
 export async function updateIntentionToSubmit(
+  actor: AuthUserLike,
   caseId: number,
   patch: Partial<IntentionToSubmitFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: IntentionToSubmitFormData }> {
-  return updateRecord('intention_to_submit_forms', caseId, 'intention_to_submit', patch, getOrCreateIntentionToSubmit, itsCompletion);
+  return updateModule('intention_to_submit', actor, caseId, patch);
 }
 
-export async function submitIntentionToSubmit(caseId: number): Promise<ModuleFormRecord> {
-  return submitRecord('intention_to_submit_forms', caseId, 'intention_to_submit', getOrCreateIntentionToSubmit);
+export async function submitIntentionToSubmit(actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  return submitModule('intention_to_submit', actor, caseId);
 }
 
-export async function getOrCreateAppointExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
-  await ensureAppointExaminersPrerequisite(caseId);
-  const { formData } = await getCaseById(caseId);
-  return getOrCreateRecord('appoint_examiners_forms', caseId, 'appoint_examiners', defaultAppointExaminersFromRott(formData), appointExaminersCompletion);
+export async function reviewIntentionToSubmitBySupervisor(
+  actor: AuthUserLike,
+  caseId: number,
+  decision: ModuleReviewDecision,
+): Promise<ModuleFormRecord> {
+  return reviewModule('intention_to_submit', actor, caseId, decision, 'review_supervisor');
+}
+
+export async function reviewIntentionToSubmitByDept(
+  actor: AuthUserLike,
+  caseId: number,
+  decision: ModuleReviewDecision,
+): Promise<ModuleFormRecord> {
+  return reviewModule('intention_to_submit', actor, caseId, decision, 'review_dept');
+}
+
+export async function printIntentionToSubmit(actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  return printModule('intention_to_submit', actor, caseId);
+}
+
+export async function getOrCreateAppointExaminers(actor: AuthUserLike, caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
+  return getOrCreateModule('appoint_examiners', actor, caseId);
 }
 
 export async function updateAppointExaminers(
+  actor: AuthUserLike,
   caseId: number,
   patch: Partial<AppointExaminersFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
-  return updateRecord('appoint_examiners_forms', caseId, 'appoint_examiners', patch, getOrCreateAppointExaminers, appointExaminersCompletion);
+  return updateModule('appoint_examiners', actor, caseId, patch);
 }
 
-export async function submitAppointExaminers(caseId: number): Promise<ModuleFormRecord> {
-  return submitRecord('appoint_examiners_forms', caseId, 'appoint_examiners', getOrCreateAppointExaminers);
+export async function submitAppointExaminers(actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  return submitModule('appoint_examiners', actor, caseId);
 }
 
-export async function getOrCreateChangeExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
-  await ensureChangeExaminersPrerequisite(caseId);
-  const { formData } = await getCaseById(caseId);
-  const appoint = await getOrCreateAppointExaminers(caseId);
-  return getOrCreateRecord(
-    'change_examiners_forms',
-    caseId,
-    'change_examiners',
-    defaultChangeExaminers(formData, appoint.formData),
-    changeExaminersCompletion,
-  );
+export async function reviewAppointExaminersByDept(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('appoint_examiners', actor, caseId, decision, 'review_dept');
+}
+
+export async function reviewAppointExaminersByChairperson(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('appoint_examiners', actor, caseId, decision, 'review_chairperson');
+}
+
+export async function reviewAppointExaminersByFaculty(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('appoint_examiners', actor, caseId, decision, 'review_faculty');
+}
+
+export async function printAppointExaminers(actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  return printModule('appoint_examiners', actor, caseId);
+}
+
+export async function getOrCreateChangeExaminers(actor: AuthUserLike, caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
+  return getOrCreateModule('change_examiners', actor, caseId);
 }
 
 export async function updateChangeExaminers(
+  actor: AuthUserLike,
   caseId: number,
   patch: Partial<ChangeExaminersFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
-  return updateRecord('change_examiners_forms', caseId, 'change_examiners', patch, getOrCreateChangeExaminers, changeExaminersCompletion);
+  return updateModule('change_examiners', actor, caseId, patch);
 }
 
-export async function submitChangeExaminers(caseId: number): Promise<ModuleFormRecord> {
-  return submitRecord('change_examiners_forms', caseId, 'change_examiners', getOrCreateChangeExaminers);
+export async function submitChangeExaminers(actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  return submitModule('change_examiners', actor, caseId);
 }
 
-export async function getOrCreateExaminerSummaryCv(caseId: number): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
-  await ensureSummaryPrerequisite(caseId);
-  const { formData } = await getCaseById(caseId);
-  const changeRecord = await readModuleRecord('change_examiners_forms', caseId);
-  const appointRecord = await readModuleRecord('appoint_examiners_forms', caseId);
-  const summarySource = changeRecord?.status === 'submitted'
-    ? parseJsonObject<ChangeExaminersFormData>(changeRecord.form_data_json)['Current examiner panel summary']
-    : appointRecord
-      ? examinersPanelSummary(parseJsonObject<AppointExaminersFormData>(appointRecord.form_data_json))
-      : '';
+export async function reviewChangeExaminersByDept(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('change_examiners', actor, caseId, decision, 'review_dept');
+}
 
-  return getOrCreateRecord(
-    'examiner_summary_cv_forms',
-    caseId,
-    'examiner_summary_cv',
-    defaultExaminerSummary(formData, summarySource),
-    examinerSummaryCompletion,
-  );
+export async function reviewChangeExaminersByChairperson(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('change_examiners', actor, caseId, decision, 'review_chairperson');
+}
+
+export async function reviewChangeExaminersByFaculty(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('change_examiners', actor, caseId, decision, 'review_faculty');
+}
+
+export async function printChangeExaminers(actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  return printModule('change_examiners', actor, caseId);
+}
+
+export async function getOrCreateExaminerSummaryCv(actor: AuthUserLike, caseId: number): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
+  return getOrCreateModule('examiner_summary_cv', actor, caseId);
 }
 
 export async function updateExaminerSummaryCv(
+  actor: AuthUserLike,
   caseId: number,
   patch: Partial<ExaminerSummaryCvFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
-  return updateRecord('examiner_summary_cv_forms', caseId, 'examiner_summary_cv', patch, getOrCreateExaminerSummaryCv, examinerSummaryCompletion);
+  return updateModule('examiner_summary_cv', actor, caseId, patch);
 }
 
-export async function submitExaminerSummaryCv(caseId: number): Promise<ModuleFormRecord> {
-  return submitRecord('examiner_summary_cv_forms', caseId, 'examiner_summary_cv', getOrCreateExaminerSummaryCv);
+export async function submitExaminerSummaryCv(actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  return submitModule('examiner_summary_cv', actor, caseId);
 }
 
-export async function getOrCreateAppointArbiter(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
-  await ensureArbiterPrerequisite(caseId);
-  const { formData } = await getCaseById(caseId);
-  const changeRecord = await readModuleRecord('change_examiners_forms', caseId);
-  const appointRecord = await readModuleRecord('appoint_examiners_forms', caseId);
-  const panelSummary = changeRecord?.status === 'submitted'
-    ? parseJsonObject<ChangeExaminersFormData>(changeRecord.form_data_json)['Current examiner panel summary']
-    : appointRecord
-      ? examinersPanelSummary(parseJsonObject<AppointExaminersFormData>(appointRecord.form_data_json))
-      : '';
+export async function reviewExaminerSummaryCvByDept(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('examiner_summary_cv', actor, caseId, decision, 'review_dept');
+}
 
-  return getOrCreateRecord('appoint_arbiter_forms', caseId, 'appoint_arbiter', defaultArbiter(formData, panelSummary), arbiterCompletion);
+export async function reviewExaminerSummaryCvByFaculty(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('examiner_summary_cv', actor, caseId, decision, 'review_faculty');
+}
+
+export async function printExaminerSummaryCv(actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  return printModule('examiner_summary_cv', actor, caseId);
+}
+
+export async function getOrCreateAppointArbiter(actor: AuthUserLike, caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
+  return getOrCreateModule('appoint_arbiter', actor, caseId);
 }
 
 export async function updateAppointArbiter(
+  actor: AuthUserLike,
   caseId: number,
   patch: Partial<AppointArbiterFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
-  return updateRecord('appoint_arbiter_forms', caseId, 'appoint_arbiter', patch, getOrCreateAppointArbiter, arbiterCompletion);
+  return updateModule('appoint_arbiter', actor, caseId, patch);
 }
 
-export async function submitAppointArbiter(caseId: number): Promise<ModuleFormRecord> {
-  return submitRecord('appoint_arbiter_forms', caseId, 'appoint_arbiter', getOrCreateAppointArbiter);
+export async function submitAppointArbiter(actor: AuthUserLike, caseId: number): Promise<ModuleFormRecord> {
+  return submitModule('appoint_arbiter', actor, caseId);
+}
+
+export async function reviewAppointArbiterByDept(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('appoint_arbiter', actor, caseId, decision, 'review_dept');
+}
+
+export async function reviewAppointArbiterByFaculty(actor: AuthUserLike, caseId: number, decision: ModuleReviewDecision): Promise<ModuleFormRecord> {
+  return reviewModule('appoint_arbiter', actor, caseId, decision, 'review_faculty');
+}
+
+export async function printAppointArbiter(actor: AuthUserLike, caseId: number): Promise<{ pdfPath: string }> {
+  return printModule('appoint_arbiter', actor, caseId);
 }

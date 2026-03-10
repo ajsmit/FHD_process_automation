@@ -1,5 +1,19 @@
 # AGENTS.md - Project Working Standards
 
+## Purpose
+This file defines execution rules for AI/human agents working in this repository: quality expectations, consistency rules, and delivery guardrails.
+
+## What To Put Here
+- Workspace-wide implementation standards.
+- Naming and consistency rules that must be enforced in code/UI/data.
+- UX expectations for production-facing screens.
+- Project-specific operational constraints that should be applied every turn.
+
+## What Not To Put Here
+- Mission/values language (use `SOUL.md`).
+- Project identity/scope framing (use `IDENTITY.md`).
+- Session-specific notes or temporary observations (use `MEMORY.md`).
+
 Use these standards for every task in this workspace.
 
 ## Quality Bar
@@ -25,3 +39,10 @@ Use these standards for every task in this workspace.
 - Do not label database-backed values as “inferred” when they are stored/canonical.
 - When changing CSV/database ingestion, validate downstream UI/API behavior before closing the task.
 
+## Change-Safety Workflow
+
+- Use periodic safety checkpoints during substantial edits:
+  - create a targeted `git stash` before potentially destructive file operations,
+  - create small, scoped commits after each validated tranche.
+- Prefer reversible operations and checkpoint first when touching migrations, auth, workflow orchestration, or generated-artifact cleanup.
+- If a remote is configured and push access is available, push validated checkpoint commits to GitHub to reduce local-only risk.

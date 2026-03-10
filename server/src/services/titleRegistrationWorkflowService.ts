@@ -50,6 +50,9 @@ const moduleNames = [
   'change_examiners',
   'examiner_summary_cv',
   'appoint_arbiter',
+  'change_title',
+  'change_supervisor',
+  'add_co_supervisor',
   'tasks',
   'approvals',
   'people',
@@ -622,6 +625,9 @@ async function syncModuleEntries(caseId: number, status: CaseStatus, summary: st
     'change_examiners',
     'examiner_summary_cv',
     'appoint_arbiter',
+    'change_title',
+    'change_supervisor',
+    'add_co_supervisor',
   ]);
   await Promise.all(
     moduleNames.map(async (moduleName) => {

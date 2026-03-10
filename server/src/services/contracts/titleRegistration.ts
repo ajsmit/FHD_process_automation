@@ -177,7 +177,19 @@ export interface ModuleFormRecord {
   case_id: number;
   form_data_json: string;
   completion_percent: number;
-  status: 'draft' | 'submitted';
+  status:
+    | 'draft'
+    | 'submitted'
+    | 'awaiting_supervisor_review'
+    | 'awaiting_dept_review'
+    | 'awaiting_chairperson_review'
+    | 'awaiting_faculty_review'
+    | 'returned_by_supervisor'
+    | 'returned_by_dept'
+    | 'returned_by_chairperson'
+    | 'returned_by_faculty'
+    | 'approved';
+  pdf_path: string | null;
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
@@ -271,4 +283,45 @@ export interface AppointArbiterFormData {
   'Arbiter Motivation': string;
   'Arbiter CV received': 'Yes' | 'No';
   'Arbiter conflict disclosure': string;
+}
+
+export interface ChangeTitleFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Current Thesis Title': string;
+  'Proposed Thesis Title': string;
+  'Change Rationale': string;
+  'Ethics Impact': string;
+  'Supervisor Comments': string;
+}
+
+export interface ChangeSupervisorFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Current Supervision Roster': string;
+  'Role To Change': '' | 'Primary supervisor' | 'Administrative supervisor' | 'Co-supervisor 1' | 'Co-supervisor 2';
+  'Outgoing Academic': string;
+  'Incoming Academic': string;
+  'Incoming Academic Qualification': string;
+  'Incoming Academic Is UWC Internal': 'Yes' | 'No';
+  'Change Rationale': string;
+  'Continuity Plan': string;
+}
+
+export interface AddCoSupervisorFormData {
+  'Student Full Name': string;
+  'Student Number': string;
+  Department: string;
+  Degree: string;
+  'Thesis Title': string;
+  Supervisor: string;
+  'Current Co-supervisors': string;
+  'Proposed Co-supervisor': string;
+  'Proposed Co-supervisor Qualification': string;
+  'Proposed Co-supervisor Is UWC Internal': 'Yes' | 'No';
+  'Motivation For Addition': string;
 }

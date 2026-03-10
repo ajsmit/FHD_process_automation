@@ -6,6 +6,7 @@ import os from 'os';
 import path from 'path';
 import type { FormData, MouFormData } from '../contracts/titleRegistration';
 import { renderMouPdfDocument } from './mouPdfService';
+import { renderPhaseBModulePdfDocument } from './phaseBModulePdfService';
 import { renderTitleRegistrationPdfDocument } from './titleRegistrationPdfService';
 
 function resolveRepoRoot(): string {
@@ -151,5 +152,24 @@ test('renderMouPdfDocument writes a valid PDF file', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mou-pdf-test-'));
   const outFile = path.join(dir, 'mou.pdf');
   await renderMouPdfDocument(outFile, sampleMouFormData());
+  await assertPdfWritten(outFile);
+});
+
+test('renderPhaseBModulePdfDocument writes a valid PDF file', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'phaseb-pdf-test-'));
+  const outFile = path.join(dir, 'phaseb.pdf');
+  await renderPhaseBModulePdfDocument(outFile, {
+    title: 'Intention to Submit',
+    subtitle: 'Generated from canonical workflow payload (policy-aligned rendering)',
+    repoRoot: resolveRepoRoot(),
+    fields: [
+      { label: 'Student Full Name', value: 'Ms Jesse Smith' },
+      { label: 'Student Number', value: '1234567' },
+      { label: 'Thesis title', value: 'Hydroclimate controls on Cnidaria bloom pulses.' },
+      { label: 'Submission type', value: 'Full thesis' },
+      { label: 'Supervisor approval status', value: 'Approved' },
+      { label: 'Department PG coordinator approval status', value: 'Approved' },
+    ],
+  });
   await assertPdfWritten(outFile);
 });

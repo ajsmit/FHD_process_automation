@@ -13,9 +13,63 @@ dotenv.config({ path: process.cwd() + '/.env' });
 
 const app = express();
 const port = process.env.PORT || 3001;
+const nodeEnv = (process.env.NODE_ENV ?? 'development').trim().toLowerCase();
+const isProduction = nodeEnv === 'production';
+
+function resolveAllowedCorsOrigins(): Set<string> {
+  const configured = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (configured.length > 0) {
+    return new Set(configured);
+  }
+
+  const fallback = new Set<string>();
+  const externalProfileBase = process.env.EXTERNAL_PROFILE_BASE_URL?.trim();
+  if (externalProfileBase) {
+    try {
+      fallback.add(new URL(externalProfileBase).origin);
+    } catch {
+      // Ignore malformed URL in fallback resolution.
+    }
+  }
+
+  if (!isProduction) {
+    fallback.add('http://localhost:3000');
+    fallback.add('http://127.0.0.1:3000');
+  }
+
+  return fallback;
+}
+
+const allowedCorsOrigins = resolveAllowedCorsOrigins();
+if (isProduction && allowedCorsOrigins.size === 0) {
+  console.warn('CORS_ALLOWED_ORIGINS is empty in production; browser-origin requests will be rejected.');
+}
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (!isProduction && allowedCorsOrigins.size === 0) {
+        callback(null, true);
+        return;
+      }
+      if (allowedCorsOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    credentials: true,
+  }),
+);
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());

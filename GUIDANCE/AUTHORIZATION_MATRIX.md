@@ -112,7 +112,7 @@ Legend:
 | MOU — edit | RE* (student sections + student signature) | RE* (supervisor sections + supervisor signature) | RE* (dept witness signature only) | RE* (chairperson signature only) | R* | Full |
 | MOU — complete | RA* (all signatures confirmed) | — | — | — | — | Full |
 
-### 4.2 Next-wave and progression modules (design baseline — pre-implementation)
+### 4.2 Next-wave and progression modules (implemented baseline for current Phase-B + change-request modules)
 
 | module | student | supervisor | dept_hd_rep | dept_chairperson | faculty_hd_rep | system_admin |
 |---|---|---|---|---|---|---|
@@ -204,20 +204,61 @@ Read/edit endpoints require authentication and role + scoping checks but no stat
 | `PATCH /cases/:id/mou` | Save MOU draft | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*` |
 | `POST /cases/:id/mou/print` | Generate MOU PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/intention-to-submit` | Read ITS module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
-| `PATCH /cases/:id/intention-to-submit` | Save ITS draft | `student*` (baseline implementation) |
-| `POST /cases/:id/intention-to-submit/submit` | Submit ITS | `student*` (baseline implementation) |
+| `PATCH /cases/:id/intention-to-submit` | Save ITS draft | `student*` |
+| `POST /cases/:id/intention-to-submit/submit` | Submit ITS | `student*` |
+| `POST /cases/:id/intention-to-submit/supervisor-review` | Supervisor review ITS | `supervisor*` |
+| `POST /cases/:id/intention-to-submit/dept-review` | Department review ITS | `dept_hd_rep*` |
+| `POST /cases/:id/intention-to-submit/print` | Generate ITS PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/appoint-examiners` | Read appoint examiners module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
-| `PATCH /cases/:id/appoint-examiners` | Save appoint examiners draft | `student*` (baseline implementation) |
-| `POST /cases/:id/appoint-examiners/submit` | Submit appoint examiners | `student*` (baseline implementation) |
+| `PATCH /cases/:id/appoint-examiners` | Save appoint examiners draft | `supervisor*` |
+| `POST /cases/:id/appoint-examiners/submit` | Submit appoint examiners | `supervisor*` |
+| `POST /cases/:id/appoint-examiners/dept-review` | Department review appoint examiners | `dept_hd_rep*` |
+| `POST /cases/:id/appoint-examiners/chairperson-review` | Chair review appoint examiners | `dept_chairperson*` |
+| `POST /cases/:id/appoint-examiners/faculty-review` | Faculty review appoint examiners | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/appoint-examiners/print` | Generate appoint examiners PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/change-examiners` | Read change examiners module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
-| `PATCH /cases/:id/change-examiners` | Save change examiners draft | `student*` (baseline implementation) |
-| `POST /cases/:id/change-examiners/submit` | Submit change examiners | `student*` (baseline implementation) |
+| `PATCH /cases/:id/change-examiners` | Save change examiners draft | `supervisor*` |
+| `POST /cases/:id/change-examiners/submit` | Submit change examiners | `supervisor*` |
+| `POST /cases/:id/change-examiners/dept-review` | Department review change examiners | `dept_hd_rep*` |
+| `POST /cases/:id/change-examiners/chairperson-review` | Chair review change examiners | `dept_chairperson*` |
+| `POST /cases/:id/change-examiners/faculty-review` | Faculty review change examiners | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/change-examiners/print` | Generate change examiners PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/examiner-summary-cv` | Read examiner summary CV module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
-| `PATCH /cases/:id/examiner-summary-cv` | Save examiner summary CV draft | `student*` (baseline implementation) |
-| `POST /cases/:id/examiner-summary-cv/submit` | Submit examiner summary CV | `student*` (baseline implementation) |
+| `PATCH /cases/:id/examiner-summary-cv` | Save examiner summary CV draft | `supervisor*` |
+| `POST /cases/:id/examiner-summary-cv/submit` | Submit examiner summary CV | `supervisor*` |
+| `POST /cases/:id/examiner-summary-cv/dept-review` | Department review summary CV | `dept_hd_rep*` |
+| `POST /cases/:id/examiner-summary-cv/faculty-review` | Faculty review summary CV | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/examiner-summary-cv/print` | Generate examiner summary CV PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/appoint-arbiter` | Read appoint arbiter module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
-| `PATCH /cases/:id/appoint-arbiter` | Save appoint arbiter draft | `student*` (baseline implementation) |
-| `POST /cases/:id/appoint-arbiter/submit` | Submit appoint arbiter | `student*` (baseline implementation) |
+| `PATCH /cases/:id/appoint-arbiter` | Save appoint arbiter draft | `supervisor*` |
+| `POST /cases/:id/appoint-arbiter/submit` | Submit appoint arbiter | `supervisor*` |
+| `POST /cases/:id/appoint-arbiter/dept-review` | Department review appoint arbiter | `dept_hd_rep*` |
+| `POST /cases/:id/appoint-arbiter/faculty-review` | Faculty review appoint arbiter | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/appoint-arbiter/print` | Generate appoint arbiter PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `GET /cases/:id/change-title` | Read change title module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `PATCH /cases/:id/change-title` | Save change title draft | `student*` |
+| `POST /cases/:id/change-title/submit` | Submit change title | `student*` |
+| `POST /cases/:id/change-title/supervisor-review` | Supervisor review change title | `supervisor*` |
+| `POST /cases/:id/change-title/dept-review` | Department review change title | `dept_hd_rep*` |
+| `POST /cases/:id/change-title/chairperson-review` | Chair review change title | `dept_chairperson*` |
+| `POST /cases/:id/change-title/faculty-review` | Faculty review change title | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/change-title/print` | Generate change title PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `GET /cases/:id/change-supervisor` | Read change supervisor module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `PATCH /cases/:id/change-supervisor` | Save change supervisor draft | `student*` |
+| `POST /cases/:id/change-supervisor/submit` | Submit change supervisor | `student*` |
+| `POST /cases/:id/change-supervisor/supervisor-review` | Supervisor review change supervisor | `supervisor*` |
+| `POST /cases/:id/change-supervisor/dept-review` | Department review change supervisor | `dept_hd_rep*` |
+| `POST /cases/:id/change-supervisor/chairperson-review` | Chair review change supervisor | `dept_chairperson*` |
+| `POST /cases/:id/change-supervisor/faculty-review` | Faculty review change supervisor | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/change-supervisor/print` | Generate change supervisor PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `GET /cases/:id/add-co-supervisor` | Read add co-supervisor module | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
+| `PATCH /cases/:id/add-co-supervisor` | Save add co-supervisor draft | `student*` |
+| `POST /cases/:id/add-co-supervisor/submit` | Submit add co-supervisor | `student*` |
+| `POST /cases/:id/add-co-supervisor/supervisor-review` | Supervisor review add co-supervisor | `supervisor*` |
+| `POST /cases/:id/add-co-supervisor/dept-review` | Department review add co-supervisor | `dept_hd_rep*` |
+| `POST /cases/:id/add-co-supervisor/chairperson-review` | Chair review add co-supervisor | `dept_chairperson*` |
+| `POST /cases/:id/add-co-supervisor/faculty-review` | Faculty review add co-supervisor | `faculty_hd_rep`, `system_admin` |
+| `POST /cases/:id/add-co-supervisor/print` | Generate add co-supervisor PDF | `student*`, `supervisor*`, `dept_hd_rep*`, `dept_chairperson*`, `faculty_hd_rep`, `system_admin` |
 | `GET /cases/:id/external-invites` | Read invite statuses | `student*`, `supervisor*`, `dept_hd_rep*`, `system_admin` |
 | `POST /directory/external-academics/invite` | Create external invite | `student*`, `dept_hd_rep*`, `system_admin` |
 | `GET /pipeline` | Read case pipeline | all roles (scoped per role) |
@@ -291,16 +332,16 @@ Token security requirements:
 | JWT Bearer auth on transition endpoints | Deployed | — |
 | Actor-to-case assignment checks on transition endpoints | Deployed | — |
 | `ENABLE_DEV_AUTH` flag for dev identity issuance | Deployed | — |
-| `users` table role enum expansion (5 roles + admin) | **Not done** | AD-004 |
-| `users.staff_number` + `users.departments` fields | **Not done** | AD-004 |
-| JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected) | AD-004 |
+| `users` table role enum expansion (5 roles + admin) | **Deployed** (DB migration + legacy-admin backfill + token/middleware/service support) | AD-004 |
+| `users.staff_number` + `users.departments` fields | **Partial** (`staff_number` + `departments` added; role-scoped production assignment model still pending) | AD-004 |
+| JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes now also protected) | AD-004 |
 | Row-level scoping enforcement in service layer | **Partial** (case/profile scoped workflow middleware deployed for protected workflow endpoints) | AD-004 |
-| Password hash storage + login endpoint | **Not done** | AD-004 |
+| Password hash storage + login endpoint | **Deployed** (`POST /api/v1/auth/login`, seeded demo password hash) | AD-004 |
 | Production identity provider integration (replace dev login) | **Not done** | AD-004 |
-| Refresh token rotation + revocation | **Not done** | AD-004 |
-| Audit logging for unauthorized attempts | **Not done** | AD-004 |
+| Refresh token rotation + revocation | **Deployed** (`/auth/refresh`, `/auth/logout`, `/auth/logout-all`) | AD-004 |
+| Audit logging for unauthorized attempts | **Deployed** (`auth_audit_events` + auth/authorization middleware/controller events) | AD-004 |
 | External invite token hardening (hash storage, single-use) | **Partial** | AD-004 |
-| CORS production lock-down | **Not done** | AD-004 |
-| Rate limiting on auth endpoints | **Not done** | AD-004 |
+| CORS production lock-down | **Partial** (environment allowlist `CORS_ALLOWED_ORIGINS` enforced; production policy hardening still required) | AD-004 |
+| Rate limiting on auth endpoints | **Deployed (baseline)** (`/auth/dev-login`, `/auth/login`, `/auth/refresh` rate-limited via `AUTH_RATE_LIMIT_WINDOW_MS` + `AUTH_RATE_LIMIT_MAX_REQUESTS`) | AD-004 |
 
 All items above are required before production deployment. The current dev-login flow (`/auth/dev-login`) must not reach production.

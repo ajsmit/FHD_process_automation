@@ -10,7 +10,10 @@ import {
   getPipeline,
   getAppointExaminers,
   getAppointArbiter,
+  getAddCoSupervisor,
   getChangeExaminers,
+  getChangeSupervisor,
+  getChangeTitle,
   getExaminerSummaryCv,
   getSupervisorProfiles,
   getTasks,
@@ -21,13 +24,51 @@ import {
   patchMou,
   patchAppointExaminers,
   patchAppointArbiter,
+  patchAddCoSupervisor,
   patchChangeExaminers,
+  patchChangeSupervisor,
+  patchChangeTitle,
   patchExaminerSummaryCv,
   patchSupervisorProfile,
+  postAppointArbiterDeptReview,
+  postAppointArbiterFacultyReview,
+  postAddCoSupervisorChairReview,
+  postAddCoSupervisorDeptReview,
+  postAddCoSupervisorFacultyReview,
+  postAddCoSupervisorSupervisorReview,
+  postAppointExaminersChairReview,
+  postAppointExaminersDeptReview,
+  postAppointExaminersFacultyReview,
+  postChangeExaminersChairReview,
+  postChangeExaminersDeptReview,
+  postChangeExaminersFacultyReview,
+  postChangeSupervisorChairReview,
+  postChangeSupervisorDeptReview,
+  postChangeSupervisorFacultyReview,
+  postChangeSupervisorSupervisorReview,
+  postChangeTitleChairReview,
+  postChangeTitleDeptReview,
+  postChangeTitleFacultyReview,
+  postChangeTitleSupervisorReview,
+  postExaminerSummaryCvDeptReview,
+  postExaminerSummaryCvFacultyReview,
+  postItsDeptReview,
+  postItsSupervisorReview,
+  postPrintAppointArbiter,
+  postPrintAppointExaminers,
+  postPrintAddCoSupervisor,
+  postPrintChangeExaminers,
+  postPrintChangeSupervisor,
+  postPrintChangeTitle,
+  postPrintExaminerSummaryCv,
+  postPrintIntentionToSubmit,
   postSubmitIntentionToSubmit,
+  postSubmitAddCoSupervisor,
   postSubmitAppointExaminers,
   postSubmitAppointArbiter,
   postSubmitChangeExaminers,
+  postSubmitChangeSupervisor,
+  postSubmitChangeTitle,
   postSubmitExaminerSummaryCv,
   postRequestSupervisorProfiles,
   postSubmitSupervisorProfile,
@@ -53,7 +94,7 @@ import {
 
 const router = express.Router();
 
-router.get('/sasi/:studentNumber/check', checkSasiAndCreateCase);
+router.get('/sasi/:studentNumber/check', requireAuth, checkSasiAndCreateCase);
 router.get('/cases/:caseId', requireAuth, requireCaseOperationAuthorization('case_read'), getCase);
 router.patch('/cases/:caseId/form', requireAuth, requireCaseOperationAuthorization('form_edit'), patchForm);
 router.post('/cases/:caseId/print', requireAuth, requireCaseOperationAuthorization('print'), printPdf);
@@ -81,19 +122,60 @@ router.patch('/cases/:caseId/mou', requireAuth, requireCaseOperationAuthorizatio
 router.post('/cases/:caseId/mou/complete', requireAuth, requireCaseOperationAuthorization('mou_complete'), markMouCompleted);
 router.post('/cases/:caseId/mou/print', requireAuth, requireCaseOperationAuthorization('mou_print'), printMou);
 router.get('/cases/:caseId/intention-to-submit', requireAuth, requireCaseOperationAuthorization('case_read'), getIntentionToSubmit);
-router.patch('/cases/:caseId/intention-to-submit', requireAuth, requireCaseOperationAuthorization('form_edit'), patchIntentionToSubmit);
-router.post('/cases/:caseId/intention-to-submit/submit', requireAuth, requireCaseOperationAuthorization('form_edit'), postSubmitIntentionToSubmit);
+router.patch('/cases/:caseId/intention-to-submit', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), patchIntentionToSubmit);
+router.post('/cases/:caseId/intention-to-submit/submit', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitIntentionToSubmit);
+router.post('/cases/:caseId/intention-to-submit/supervisor-review', requireAuth, requireCaseOperationAuthorization('module_review_supervisor'), postItsSupervisorReview);
+router.post('/cases/:caseId/intention-to-submit/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postItsDeptReview);
+router.post('/cases/:caseId/intention-to-submit/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintIntentionToSubmit);
 router.get('/cases/:caseId/appoint-examiners', requireAuth, requireCaseOperationAuthorization('case_read'), getAppointExaminers);
-router.patch('/cases/:caseId/appoint-examiners', requireAuth, requireCaseOperationAuthorization('form_edit'), patchAppointExaminers);
-router.post('/cases/:caseId/appoint-examiners/submit', requireAuth, requireCaseOperationAuthorization('form_edit'), postSubmitAppointExaminers);
+router.patch('/cases/:caseId/appoint-examiners', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), patchAppointExaminers);
+router.post('/cases/:caseId/appoint-examiners/submit', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), postSubmitAppointExaminers);
+router.post('/cases/:caseId/appoint-examiners/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postAppointExaminersDeptReview);
+router.post('/cases/:caseId/appoint-examiners/chairperson-review', requireAuth, requireCaseOperationAuthorization('module_review_chairperson'), postAppointExaminersChairReview);
+router.post('/cases/:caseId/appoint-examiners/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postAppointExaminersFacultyReview);
+router.post('/cases/:caseId/appoint-examiners/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintAppointExaminers);
 router.get('/cases/:caseId/change-examiners', requireAuth, requireCaseOperationAuthorization('case_read'), getChangeExaminers);
-router.patch('/cases/:caseId/change-examiners', requireAuth, requireCaseOperationAuthorization('form_edit'), patchChangeExaminers);
-router.post('/cases/:caseId/change-examiners/submit', requireAuth, requireCaseOperationAuthorization('form_edit'), postSubmitChangeExaminers);
+router.patch('/cases/:caseId/change-examiners', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), patchChangeExaminers);
+router.post('/cases/:caseId/change-examiners/submit', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), postSubmitChangeExaminers);
+router.post('/cases/:caseId/change-examiners/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postChangeExaminersDeptReview);
+router.post('/cases/:caseId/change-examiners/chairperson-review', requireAuth, requireCaseOperationAuthorization('module_review_chairperson'), postChangeExaminersChairReview);
+router.post('/cases/:caseId/change-examiners/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postChangeExaminersFacultyReview);
+router.post('/cases/:caseId/change-examiners/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintChangeExaminers);
 router.get('/cases/:caseId/examiner-summary-cv', requireAuth, requireCaseOperationAuthorization('case_read'), getExaminerSummaryCv);
-router.patch('/cases/:caseId/examiner-summary-cv', requireAuth, requireCaseOperationAuthorization('form_edit'), patchExaminerSummaryCv);
-router.post('/cases/:caseId/examiner-summary-cv/submit', requireAuth, requireCaseOperationAuthorization('form_edit'), postSubmitExaminerSummaryCv);
+router.patch('/cases/:caseId/examiner-summary-cv', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), patchExaminerSummaryCv);
+router.post('/cases/:caseId/examiner-summary-cv/submit', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), postSubmitExaminerSummaryCv);
+router.post('/cases/:caseId/examiner-summary-cv/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postExaminerSummaryCvDeptReview);
+router.post('/cases/:caseId/examiner-summary-cv/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postExaminerSummaryCvFacultyReview);
+router.post('/cases/:caseId/examiner-summary-cv/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintExaminerSummaryCv);
 router.get('/cases/:caseId/appoint-arbiter', requireAuth, requireCaseOperationAuthorization('case_read'), getAppointArbiter);
-router.patch('/cases/:caseId/appoint-arbiter', requireAuth, requireCaseOperationAuthorization('form_edit'), patchAppointArbiter);
-router.post('/cases/:caseId/appoint-arbiter/submit', requireAuth, requireCaseOperationAuthorization('form_edit'), postSubmitAppointArbiter);
+router.patch('/cases/:caseId/appoint-arbiter', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), patchAppointArbiter);
+router.post('/cases/:caseId/appoint-arbiter/submit', requireAuth, requireCaseOperationAuthorization('module_supervisor_edit_submit'), postSubmitAppointArbiter);
+router.post('/cases/:caseId/appoint-arbiter/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postAppointArbiterDeptReview);
+router.post('/cases/:caseId/appoint-arbiter/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postAppointArbiterFacultyReview);
+router.post('/cases/:caseId/appoint-arbiter/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintAppointArbiter);
+router.get('/cases/:caseId/change-title', requireAuth, requireCaseOperationAuthorization('case_read'), getChangeTitle);
+router.patch('/cases/:caseId/change-title', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), patchChangeTitle);
+router.post('/cases/:caseId/change-title/submit', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitChangeTitle);
+router.post('/cases/:caseId/change-title/supervisor-review', requireAuth, requireCaseOperationAuthorization('module_review_supervisor'), postChangeTitleSupervisorReview);
+router.post('/cases/:caseId/change-title/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postChangeTitleDeptReview);
+router.post('/cases/:caseId/change-title/chairperson-review', requireAuth, requireCaseOperationAuthorization('module_review_chairperson'), postChangeTitleChairReview);
+router.post('/cases/:caseId/change-title/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postChangeTitleFacultyReview);
+router.post('/cases/:caseId/change-title/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintChangeTitle);
+router.get('/cases/:caseId/change-supervisor', requireAuth, requireCaseOperationAuthorization('case_read'), getChangeSupervisor);
+router.patch('/cases/:caseId/change-supervisor', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), patchChangeSupervisor);
+router.post('/cases/:caseId/change-supervisor/submit', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitChangeSupervisor);
+router.post('/cases/:caseId/change-supervisor/supervisor-review', requireAuth, requireCaseOperationAuthorization('module_review_supervisor'), postChangeSupervisorSupervisorReview);
+router.post('/cases/:caseId/change-supervisor/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postChangeSupervisorDeptReview);
+router.post('/cases/:caseId/change-supervisor/chairperson-review', requireAuth, requireCaseOperationAuthorization('module_review_chairperson'), postChangeSupervisorChairReview);
+router.post('/cases/:caseId/change-supervisor/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postChangeSupervisorFacultyReview);
+router.post('/cases/:caseId/change-supervisor/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintChangeSupervisor);
+router.get('/cases/:caseId/add-co-supervisor', requireAuth, requireCaseOperationAuthorization('case_read'), getAddCoSupervisor);
+router.patch('/cases/:caseId/add-co-supervisor', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), patchAddCoSupervisor);
+router.post('/cases/:caseId/add-co-supervisor/submit', requireAuth, requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitAddCoSupervisor);
+router.post('/cases/:caseId/add-co-supervisor/supervisor-review', requireAuth, requireCaseOperationAuthorization('module_review_supervisor'), postAddCoSupervisorSupervisorReview);
+router.post('/cases/:caseId/add-co-supervisor/dept-review', requireAuth, requireCaseOperationAuthorization('module_review_dept'), postAddCoSupervisorDeptReview);
+router.post('/cases/:caseId/add-co-supervisor/chairperson-review', requireAuth, requireCaseOperationAuthorization('module_review_chairperson'), postAddCoSupervisorChairReview);
+router.post('/cases/:caseId/add-co-supervisor/faculty-review', requireAuth, requireCaseOperationAuthorization('module_review_faculty'), postAddCoSupervisorFacultyReview);
+router.post('/cases/:caseId/add-co-supervisor/print', requireAuth, requireCaseOperationAuthorization('module_print'), postPrintAddCoSupervisor);
 
 export default router;

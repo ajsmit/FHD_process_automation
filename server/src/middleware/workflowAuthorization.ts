@@ -1,4 +1,13 @@
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import { logAuthAuditEvent } from '../auth/auditLogService';
+import {
+  isAdministrativeRole,
+  isDeptChairpersonRole,
+  isDeptHdRepRole,
+  isFacultyHdRepRole,
+  isLegacyAdminRole,
+  isSystemAdminRole,
+} from '../auth/roleService';
 import db from '../db/knex';
 import type { FormData } from '../services/contracts/titleRegistration';
 
@@ -6,6 +15,13 @@ type CaseOperationAction =
   | 'case_read'
   | 'form_edit'
   | 'print'
+  | 'module_student_edit_submit'
+  | 'module_supervisor_edit_submit'
+  | 'module_review_supervisor'
+  | 'module_review_dept'
+  | 'module_review_chairperson'
+  | 'module_review_faculty'
+  | 'module_print'
   | 'external_invites_read'
   | 'supervisor_profiles_read'
   | 'supervisor_profiles_request'
@@ -111,33 +127,65 @@ async function authorizeCaseOperation(req: Request, action: CaseOperationAction)
 
   if (user.role === 'student') {
     if (user.sasiId !== context.studentNumber) return false;
-    return action !== 'supervisor_profiles_reminder';
+    return action !== 'supervisor_profiles_reminder'
+      && action !== 'module_supervisor_edit_submit'
+      && action !== 'module_review_supervisor'
+      && action !== 'module_review_dept'
+      && action !== 'module_review_chairperson'
+      && action !== 'module_review_faculty';
   }
 
   if (user.role === 'supervisor') {
     const assigned = isAssignedSupervisor(user.firstName, user.lastName, context.formData);
     if (!assigned) return false;
-    if (action === 'form_edit' || action === 'mou_complete' || action === 'supervisor_profiles_request' || action === 'supervisor_profiles_reminder') {
+    if (
+      action === 'form_edit'
+      || action === 'mou_complete'
+      || action === 'supervisor_profiles_request'
+      || action === 'supervisor_profiles_reminder'
+      || action === 'module_student_edit_submit'
+      || action === 'module_review_dept'
+      || action === 'module_review_chairperson'
+      || action === 'module_review_faculty'
+    ) {
       return false;
     }
     return true;
   }
 
-  if (user.role !== 'admin') {
+  if (!isAdministrativeRole(user.role)) {
     return false;
   }
 
-  const flags = await adminScopeFlags(user.sasiId, context.studentDepartment);
+  let legacyFlags = { dept: false, chair: false, faculty: false };
+  if (isLegacyAdminRole(user.role)) {
+    legacyFlags = await adminScopeFlags(user.sasiId, context.studentDepartment);
+  }
+  const flags = {
+    dept: isSystemAdminRole(user.role) || isDeptHdRepRole(user.role) || legacyFlags.dept,
+    chair: isSystemAdminRole(user.role) || isDeptChairpersonRole(user.role) || legacyFlags.chair,
+    faculty: isSystemAdminRole(user.role) || isFacultyHdRepRole(user.role) || legacyFlags.faculty,
+  };
   switch (action) {
     case 'case_read':
     case 'print':
+    case 'module_print':
     case 'external_invites_read':
     case 'supervisor_profiles_read':
     case 'mou_read':
     case 'mou_print':
       return flags.dept || flags.chair || flags.faculty;
     case 'form_edit':
+    case 'module_student_edit_submit':
+    case 'module_supervisor_edit_submit':
+    case 'module_review_supervisor':
       return false;
+    case 'module_review_dept':
+      return flags.dept;
+    case 'module_review_chairperson':
+      return flags.chair;
+    case 'module_review_faculty':
+      return flags.faculty;
     case 'supervisor_profiles_request':
       return flags.dept;
     case 'supervisor_profiles_reminder':
@@ -187,11 +235,37 @@ export function requireCaseOperationAuthorization(action: CaseOperationAction): 
     try {
       const authorized = await authorizeCaseOperation(req, action);
       if (!authorized) {
+        await logAuthAuditEvent({
+          eventType: 'authorization_case_operation_denied',
+          userId: req.authUser?.id,
+          actorSasiId: req.authUser?.sasiId,
+          route: req.originalUrl,
+          method: req.method,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent') ?? '',
+          details: {
+            action,
+            caseId: req.params.caseId ?? '',
+          },
+        });
         res.status(403).json({ message: 'Authenticated actor is not authorized for this case operation.' });
         return;
       }
       next();
     } catch (error) {
+      await logAuthAuditEvent({
+        eventType: 'authorization_case_operation_check_failed',
+        userId: req.authUser?.id,
+        actorSasiId: req.authUser?.sasiId,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+        details: {
+          action,
+          reason: error instanceof Error ? error.message : 'unknown',
+        },
+      });
       res.status(400).json({ message: error instanceof Error ? error.message : 'Authorization check failed' });
     }
   };
@@ -202,19 +276,52 @@ export function requireProfileOperationAuthorization(action: ProfileOperationAct
     try {
       const authorized = await authorizeProfileOperation(req, action);
       if (!authorized) {
+        await logAuthAuditEvent({
+          eventType: 'authorization_profile_operation_denied',
+          userId: req.authUser?.id,
+          actorSasiId: req.authUser?.sasiId,
+          route: req.originalUrl,
+          method: req.method,
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent') ?? '',
+          details: {
+            action,
+            profileId: req.params.profileId ?? '',
+          },
+        });
         res.status(403).json({ message: 'Authenticated actor is not authorized for this profile operation.' });
         return;
       }
       next();
     } catch (error) {
+      await logAuthAuditEvent({
+        eventType: 'authorization_profile_operation_check_failed',
+        userId: req.authUser?.id,
+        actorSasiId: req.authUser?.sasiId,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+        details: {
+          action,
+          reason: error instanceof Error ? error.message : 'unknown',
+        },
+      });
       res.status(400).json({ message: error instanceof Error ? error.message : 'Authorization check failed' });
     }
   };
 }
 
 export function requireCollectionOperationAuthorization(): RequestHandler {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     if (!req.authUser) {
+      await logAuthAuditEvent({
+        eventType: 'authorization_collection_denied_unauthenticated',
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+      });
       res.status(401).json({ message: 'Authentication required.' });
       return;
     }

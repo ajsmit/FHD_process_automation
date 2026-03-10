@@ -21,11 +21,15 @@ A monorepo for postgraduate workflow automation.
    ```bash
    npm install
    ```
-2. Start the API server in dev mode:
+2. Apply migrations (recommended before first run and after pulling DB changes):
+   ```bash
+   npm run db:migrate --workspace=server
+   ```
+3. Start the API server in dev mode:
    ```bash
    npm run dev:server
    ```
-3. Confirm it is running by opening:
+4. Confirm it is running by opening:
    `http://localhost:3001/api/v1/health`
    You should see:
    `{"status":"UP"}`
@@ -141,6 +145,8 @@ Server (`server/.env`):
 - `AUTO_INIT_DB`, `ENABLE_DEMO_DATA`, `ENABLE_DEV_AUTH`, `ENABLE_LEGACY_PHASE1`
 - `EXTERNAL_PROFILE_BASE_URL`
 - `JWT_SECRET`, `JWT_EXPIRES_IN`
+- `REFRESH_TOKEN_TTL_DAYS`, `DEMO_USER_PASSWORD`
+- `AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `CORS_ALLOWED_ORIGINS`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (required for automatic external profile invite email delivery)
 
 Client (`client/.env.local`):
@@ -187,12 +193,19 @@ Title Registration workflow has been implemented end-to-end with SASI prefill ch
 See `PROJECT_IMPLEMENTATION_PLAN.md` for phased scope.
 
 ## Auth (Current)
-- Transition endpoints now require JWT Bearer authentication and server-side actor-to-case authorization checks.
-- Local development uses `POST /api/v1/auth/dev-login` (enabled by `ENABLE_DEV_AUTH=true`) to mint demo tokens from seeded `users.sasi_id`.
+- Transition and protected workflow/internal endpoints require JWT Bearer authentication and server-side actor-to-case authorization checks.
+- Login/session endpoints:
+  - `POST /api/v1/auth/login` (identifier + password)
+  - `POST /api/v1/auth/refresh` (refresh token rotation)
+  - `POST /api/v1/auth/logout` (revoke current refresh token)
+  - `POST /api/v1/auth/logout-all` (revoke all refresh tokens for actor)
+  - `POST /api/v1/auth/dev-login` (development fallback; only when `ENABLE_DEV_AUTH=true`)
+- Local seeded users are password-enabled via `DEMO_USER_PASSWORD` (default in env templates: `ChangeMe123!`).
 - Canonical transition role simulation currently maps to seeded identities:
   - student: `1234567`
   - supervisor: `STAFF-001`
   - dept admin: `STAFF-003`
   - faculty reviewer: `STAFF-004`
   - chairperson: `STAFF-005`
+- Auth attempts are rate-limited by `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX_REQUESTS`.
 - Legacy route families are disabled by default (`ENABLE_LEGACY_PHASE1=false`) and return `410`.

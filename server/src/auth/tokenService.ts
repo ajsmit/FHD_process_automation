@@ -1,7 +1,24 @@
 import jwt from 'jsonwebtoken';
 import config from '../config';
 
-export type Role = 'student' | 'supervisor' | 'admin';
+export type Role =
+  | 'student'
+  | 'supervisor'
+  | 'dept_hd_rep'
+  | 'dept_chairperson'
+  | 'faculty_hd_rep'
+  | 'system_admin'
+  | 'admin';
+
+const ROLE_VALUES = new Set<Role>([
+  'student',
+  'supervisor',
+  'admin',
+  'dept_hd_rep',
+  'dept_chairperson',
+  'faculty_hd_rep',
+  'system_admin',
+]);
 
 export interface TokenUser {
   id: number;
@@ -52,7 +69,7 @@ export function verifyAuthToken(token: string): TokenUser {
   if (!Number.isFinite(id) || id < 1) {
     throw new Error('Invalid token subject');
   }
-  if (decoded.role !== 'student' && decoded.role !== 'supervisor' && decoded.role !== 'admin') {
+  if (!ROLE_VALUES.has(decoded.role)) {
     throw new Error('Invalid token role');
   }
   return {

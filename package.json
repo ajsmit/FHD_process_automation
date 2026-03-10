@@ -14,7 +14,8 @@
     "build:client": "npm run build --workspace=client",
     "build:server": "npm run build --workspace=server",
     "test:server": "npm run test --workspace=server",
-    "start": "npm start --workspace=server"
+    "start": "npm start --workspace=server",
+    "check:dashboard-size": "./scripts/check-dashboard-sizes.sh"
   },
   "keywords": [],
   "author": "",
