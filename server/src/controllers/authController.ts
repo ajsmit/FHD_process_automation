@@ -14,6 +14,7 @@ import type { Role } from '../auth/tokenService';
 interface UserRow {
   id: number;
   sasi_id: string;
+  staff_number?: string | null;
   first_name: string;
   last_name: string;
   email: string;
@@ -96,6 +97,7 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
 
     const user = await db<UserRow>('users')
       .where({ sasi_id: identifier })
+      .orWhere({ staff_number: identifier })
       .orWhere({ email: identifier })
       .first('id', 'sasi_id', 'first_name', 'last_name', 'email', 'role', 'password_hash', 'active');
 

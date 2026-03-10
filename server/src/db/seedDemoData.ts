@@ -462,6 +462,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
         last_name: 'Smith',
         email: 'jesse.smith@example.com',
         role: 'student' as const,
+        staff_number: null,
+        departments: null,
         active: true,
       },
       {
@@ -470,6 +472,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
         last_name: 'Smit',
         email: 'aj.smit@example.com',
         role: 'supervisor' as const,
+        staff_number: 'STAFF-001',
+        departments: null,
         active: true,
       },
       {
@@ -478,6 +482,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
         last_name: 'Engelbrecht',
         email: 'adriaan.engelbrecht@example.com',
         role: 'dept_hd_rep' as const,
+        staff_number: 'STAFF-003',
+        departments: JSON.stringify(['Biodiversity & Conservation Biology']),
         active: true,
       },
       {
@@ -486,6 +492,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
         last_name: 'Isaacs',
         email: 'natalie.isaacs@example.com',
         role: 'faculty_hd_rep' as const,
+        staff_number: 'STAFF-004',
+        departments: null,
         active: true,
       },
       {
@@ -494,6 +502,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
         last_name: 'Rajkaran',
         email: 'anusha.rajkaran@example.com',
         role: 'dept_chairperson' as const,
+        staff_number: 'STAFF-005',
+        departments: JSON.stringify(['Biodiversity & Conservation Biology']),
         active: true,
       },
     ];
@@ -512,6 +522,8 @@ export async function seedDemoData(db: Knex): Promise<void> {
             last_name: user.last_name,
             email: user.email,
             role: user.role,
+            staff_number: user.staff_number,
+            departments: user.departments,
             password_hash: demoPasswordHash,
             active: user.active,
             updated_at: db.fn.now(),

@@ -211,6 +211,13 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
   - supports both SQLite (table rebuild) and MySQL (enum alter) migration paths.
 - aligned demo seed user roles in `server/src/db/seedDemoData.ts` to scoped matrix roles (`dept_hd_rep`, `faculty_hd_rep`, `dept_chairperson`).
 - AD-004 remains In Progress pending production identity provider integration and full staff/departments assignment-governance model.
+30. AD-004 progress update on 2026-03-10 (scope-field backfill + login identifier tranche):
+- added migration `server/src/db/migrations/20260310224500_backfill_user_scope_fields.ts`:
+  - backfills `users.staff_number` from `users.sasi_id` for staff/admin-class roles where missing.
+  - backfills `users.departments` JSON arrays for `dept_hd_rep` and `dept_chairperson` from `sasi_staff` departmental assignments.
+- aligned seeded demo users with explicit `staff_number` + `departments` scope fields in `server/src/db/seedDemoData.ts`.
+- expanded password login identifier matching to include `staff_number` in addition to `sasi_id` and `email` (`server/src/controllers/authController.ts`).
+- AD-004 remains In Progress pending production identity provider integration and final role-assignment governance lifecycle.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

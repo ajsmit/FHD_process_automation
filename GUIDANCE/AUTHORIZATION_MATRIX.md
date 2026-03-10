@@ -333,7 +333,7 @@ Token security requirements:
 | Actor-to-case assignment checks on transition endpoints | Deployed | — |
 | `ENABLE_DEV_AUTH` flag for dev identity issuance | Deployed | — |
 | `users` table role enum expansion (5 roles + admin) | **Deployed** (DB migration + legacy-admin backfill + token/middleware/service support) | AD-004 |
-| `users.staff_number` + `users.departments` fields | **Partial** (`staff_number` + `departments` added; role-scoped production assignment model still pending) | AD-004 |
+| `users.staff_number` + `users.departments` fields | **Deployed (baseline)** (schema + backfill migration + seed alignment in place; production governance lifecycle still pending) | AD-004 |
 | JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes now also protected) | AD-004 |
 | Row-level scoping enforcement in service layer | **Partial** (case/profile scoped workflow middleware deployed for protected workflow endpoints) | AD-004 |
 | Password hash storage + login endpoint | **Deployed** (`POST /api/v1/auth/login`, seeded demo password hash) | AD-004 |

@@ -195,7 +195,7 @@ See `PROJECT_IMPLEMENTATION_PLAN.md` for phased scope.
 ## Auth (Current)
 - Transition and protected workflow/internal endpoints require JWT Bearer authentication and server-side actor-to-case authorization checks.
 - Login/session endpoints:
-  - `POST /api/v1/auth/login` (identifier + password)
+  - `POST /api/v1/auth/login` (identifier + password; identifier supports `sasi_id`, `staff_number`, or `email`)
   - `POST /api/v1/auth/refresh` (refresh token rotation)
   - `POST /api/v1/auth/logout` (revoke current refresh token)
   - `POST /api/v1/auth/logout-all` (revoke all refresh tokens for actor)
