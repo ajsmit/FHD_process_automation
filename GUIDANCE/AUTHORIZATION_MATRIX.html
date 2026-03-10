@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>authorization_matrix</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="AUTHORIZATION_MATRIX_files/libs/clipboard/clipboard.min.js"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/popper.min.js"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="AUTHORIZATION_MATRIX_files/libs/quarto-html/anchor.min.js"></script>
+<link href="AUTHORIZATION_MATRIX_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="AUTHORIZATION_MATRIX_files/libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="AUTHORIZATION_MATRIX_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="AUTHORIZATION_MATRIX_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="AUTHORIZATION_MATRIX_files/libs/bootstrap/bootstrap-d6a003b94517c951b2d65075d42fb01b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="authorization-matrix" class="level1">
+<h1>Authorization Matrix</h1>
+<p>Version: 2026-03-10 Status: Policy-complete specification; implementation partially deployed (transition + key non-transition workflow endpoints) — broader coverage tracked as AD-004 Scope: All authenticated workflow actors in the PG Workflow Platform</p>
+<section id="boundaries" class="level2">
+<h2 class="anchored" data-anchor-id="boundaries">Boundaries</h2>
+<ul>
+<li>This file is authoritative for role definitions, module access rights, data scoping rules, and security requirements.</li>
+<li>Policy doctrine and lifecycle gates are owned by <a href="./POLICY_RULEBOOK.md">POLICY_RULEBOOK.md</a>.</li>
+<li>Endpoint/table inventory is owned by <a href="./PG_PLATFORM_TECH_SPEC.md">PG_PLATFORM_TECH_SPEC.md</a>.</li>
+<li>Implementation gaps and timelines are tracked in <a href="./ARCHITECTURE_DEBT_REGISTER.md">ARCHITECTURE_DEBT_REGISTER.md</a> (AD-004).</li>
+</ul>
+<hr>
+</section>
+<section id="role-definitions" class="level2">
+<h2 class="anchored" data-anchor-id="role-definitions">1. Role Definitions</h2>
+<p>Five login roles are defined for the platform. External academics (supervisors, examiners, arbiters) access the system via tokenized invite only and are not login roles.</p>
+<section id="student" class="level3">
+<h3 class="anchored" data-anchor-id="student">1.1 <code>student</code></h3>
+<p>The registered postgraduate student. Initiates and owns the primary workflow forms (ROTT, MOU, ITS, progress reports, progression requests). Can only see and act on their own cases.</p>
+<p>Typical person: the PG student who submitted their student number to start SASI lookup.</p>
+</section>
+<section id="supervisor" class="level3">
+<h3 class="anchored" data-anchor-id="supervisor">1.2 <code>supervisor</code></h3>
+<p>An internal UWC academic staff member holding a supervision role on a case. Covers:</p>
+<ul>
+<li>Primary supervisor</li>
+<li>Co-supervisor (co1 or co2)</li>
+<li>Administrative Supervisor (Nominal Role)</li>
+</ul>
+<p>All three sub-types share the same login role. Their specific capacity on a given case (primary vs co vs admin-nominal) is captured in the ROTT form data and governs which transitions they may invoke on that case. Supervisors access only the cases where they are named in a supervision field.</p>
+<p>Typical persons: named supervisors and co-supervisors listed in the ROTT.</p>
+</section>
+<section id="dept_hd_rep" class="level3">
+<h3 class="anchored" data-anchor-id="dept_hd_rep">1.3 <code>dept_hd_rep</code></h3>
+<p>The Departmental Higher Degrees Representative — the staff member responsible for vetting postgraduate cases at the departmental level, routing completed cases to the faculty, and monitoring profile and notification compliance within their department. Sees all cases in their assigned department(s).</p>
+<p>Typical person: the FHD departmental representative (e.g., “Adriaan” in the current seed data).</p>
+</section>
+<section id="dept_chairperson" class="level3">
+<h3 class="anchored" data-anchor-id="dept_chairperson">1.4 <code>dept_chairperson</code></h3>
+<p>The Departmental Chairperson or Head of Department, responsible for signing off the ROTT after departmental review. Sees all cases in their assigned department(s).</p>
+<p>Typical person: the departmental HoD or a delegated chairperson-sign authority.</p>
+</section>
+<section id="faculty_hd_rep" class="level3">
+<h3 class="anchored" data-anchor-id="faculty_hd_rep">1.5 <code>faculty_hd_rep</code></h3>
+<p>The Faculty Higher Degrees Representative — responsible for the final faculty-level review and approval of cases forwarded from the department. Sees all cases across all departments.</p>
+<p>Typical person: the faculty FHD representative (e.g., “Natalie Isaacs” in the current seed data).</p>
+</section>
+<section id="system_admin" class="level3">
+<h3 class="anchored" data-anchor-id="system_admin">1.6 <code>system_admin</code></h3>
+<p>Platform administrator with full read/write access across all cases, users, and configuration. No specific departmental scope restriction.</p>
+</section>
+<section id="external-academics-tokenized-not-a-login-role" class="level3">
+<h3 class="anchored" data-anchor-id="external-academics-tokenized-not-a-login-role">1.7 External academics (tokenized, not a login role)</h3>
+<p>External supervisors, examiners, and arbiters who are not UWC staff access the platform exclusively via tokenized invite links (<code>/external-academic/:token</code>). They have no general login. Their scope is strictly bounded to the invite form for their assigned role on a specific case. See Section 7.</p>
+<hr>
+</section>
+</section>
+<section id="users-table-requirements" class="level2">
+<h2 class="anchored" data-anchor-id="users-table-requirements">2. <code>users</code> Table Requirements</h2>
+<p>The current <code>users.role</code> enum (<code>student | supervisor | admin</code>) must be migrated to reflect the full role set. Additional fields are required for row-level scoping.</p>
+<section id="required-schema" class="level3">
+<h3 class="anchored" data-anchor-id="required-schema">Required schema</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>field</th>
+<th>type</th>
+<th>purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>id</code></td>
+<td>int (PK)</td>
+<td>internal identity</td>
+</tr>
+<tr class="even">
+<td><code>sasi_id</code></td>
+<td>string (unique, nullable)</td>
+<td>links <code>student</code> role to <code>sasi_students.student_number</code></td>
+</tr>
+<tr class="odd">
+<td><code>staff_number</code></td>
+<td>string (unique, nullable)</td>
+<td>links <code>supervisor</code> role to <code>uwc_staff_directory.staff_number</code> for case-assignment scoping</td>
+</tr>
+<tr class="even">
+<td><code>first_name</code></td>
+<td>string</td>
+<td>display</td>
+</tr>
+<tr class="odd">
+<td><code>last_name</code></td>
+<td>string</td>
+<td>display</td>
+</tr>
+<tr class="even">
+<td><code>email</code></td>
+<td>string (unique)</td>
+<td>login identity and notification delivery</td>
+</tr>
+<tr class="odd">
+<td><code>password_hash</code></td>
+<td>string</td>
+<td>hashed credential (bcrypt)</td>
+</tr>
+<tr class="even">
+<td><code>role</code></td>
+<td>enum</td>
+<td><code>student \| supervisor \| dept_hd_rep \| dept_chairperson \| faculty_hd_rep \| system_admin</code></td>
+</tr>
+<tr class="odd">
+<td><code>departments</code></td>
+<td>JSON array (nullable)</td>
+<td>list of department names for <code>dept_hd_rep</code> and <code>dept_chairperson</code> scoping</td>
+</tr>
+<tr class="even">
+<td><code>active</code></td>
+<td>boolean</td>
+<td>whether the account may authenticate</td>
+</tr>
+<tr class="odd">
+<td><code>created_at</code>, <code>updated_at</code></td>
+<td>timestamps</td>
+<td>audit</td>
+</tr>
+</tbody>
+</table>
+<blockquote class="blockquote">
+<p><strong>Migration note</strong>: this schema supersedes the initial <code>users</code> table. A migration is required to (a) expand the <code>role</code> enum, (b) add <code>staff_number</code>, <code>departments</code>, <code>password_hash</code>, and <code>active</code> columns. Tracked as AD-004.</p>
+</blockquote>
+<hr>
+</section>
+</section>
+<section id="access-model-overview" class="level2">
+<h2 class="anchored" data-anchor-id="access-model-overview">3. Access Model Overview</h2>
+<ul>
+<li><strong>Default deny</strong>: all protected endpoints require a valid JWT Bearer token. Absence or invalidity returns <code>401 Unauthorized</code>.</li>
+<li><strong>Role check</strong>: after authentication, every endpoint checks whether the actor’s role appears in the allowed roles list. Failure returns <code>403 Forbidden</code>.</li>
+<li><strong>Assignment check</strong> (where applicable): even within the correct role, the actor must be assigned to the specific case. A supervisor may not act on a case where they are not named. Failure returns <code>403 Forbidden</code>.</li>
+<li><strong>Stage check</strong> (transitions only): the case must be in the expected state for the transition. Incorrect stage returns <code>409 Conflict</code>.</li>
+<li><strong>UI gates are informational only</strong>: disabled buttons and hidden sections in the UI reflect state, but server-side authorization is always the authoritative gate.</li>
+</ul>
+<hr>
+</section>
+<section id="module-access-matrix" class="level2">
+<h2 class="anchored" data-anchor-id="module-access-matrix">4. Module Access Matrix</h2>
+<p>Legend:</p>
+<ul>
+<li><code>—</code> No access</li>
+<li><code>R</code> Read-only</li>
+<li><code>RE</code> Read + edit own sections (draft stage)</li>
+<li><code>RES</code> Read + edit + submit</li>
+<li><code>RA</code> Read + trigger transition/approval action</li>
+<li><code>REA</code> Read + edit own sections + trigger action</li>
+<li><code>Full</code> Read + edit + submit + trigger all permitted actions</li>
+<li><code>*</code> Scope limited (own record, own case, or own dept — see Section 5)</li>
+</ul>
+<section id="implemented-modules" class="level3">
+<h3 class="anchored" data-anchor-id="implemented-modules">4.1 Implemented modules</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>module</th>
+<th>student</th>
+<th>supervisor</th>
+<th>dept_hd_rep</th>
+<th>dept_chairperson</th>
+<th>faculty_hd_rep</th>
+<th>system_admin</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>TITLE_REGISTRATION (ROTT) — edit</td>
+<td>RES*</td>
+<td>R*</td>
+<td>R*</td>
+<td>R*</td>
+<td>R*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>TITLE_REGISTRATION — review transitions</td>
+<td>RA* (student-vet step)</td>
+<td>RA* (supervisor-review)</td>
+<td>RA* (dept-review, dept-send-faculty)</td>
+<td>RA* (chairperson-sign)</td>
+<td>RA* (faculty-review)</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>SUPERVISOR_PROFILES — view</td>
+<td>R* (status only, not form content)</td>
+<td>REA* (own profile)</td>
+<td>R*</td>
+<td>R*</td>
+<td>R*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>SUPERVISOR_PROFILES — request/remind</td>
+<td>—</td>
+<td>—</td>
+<td>RA*</td>
+<td>—</td>
+<td>RA</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>MOU — edit</td>
+<td>RE* (student sections + student signature)</td>
+<td>RE* (supervisor sections + supervisor signature)</td>
+<td>RE* (dept witness signature only)</td>
+<td>RE* (chairperson signature only)</td>
+<td>R*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>MOU — complete</td>
+<td>RA* (all signatures confirmed)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>Full</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="next-wave-and-progression-modules-design-baseline-pre-implementation" class="level3">
+<h3 class="anchored" data-anchor-id="next-wave-and-progression-modules-design-baseline-pre-implementation">4.2 Next-wave and progression modules (design baseline — pre-implementation)</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>module</th>
+<th>student</th>
+<th>supervisor</th>
+<th>dept_hd_rep</th>
+<th>dept_chairperson</th>
+<th>faculty_hd_rep</th>
+<th>system_admin</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>INTENTION_TO_SUBMIT</td>
+<td>RES*</td>
+<td>RA* (approve/decline)</td>
+<td>RA* (final dept approval)</td>
+<td>R*</td>
+<td>R*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>APPOINT_EXAMINERS</td>
+<td>R*</td>
+<td>RES* (primary supervisor submits)</td>
+<td>RA* (dept review)</td>
+<td>RA* (sign)</td>
+<td>RA* (final approval)</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>CHANGE_EXAMINERS</td>
+<td>R*</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>APPOINT_ARBITER</td>
+<td>R*</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>EXAMINER_SUMMARY_CV</td>
+<td>R*</td>
+<td>RE* (provides evidence)</td>
+<td>RA*</td>
+<td>R*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>CHANGE_TITLE</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>CHANGE_SUPERVISOR</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>ADD_CO_SUPERVISOR</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>PROGRESS_REPORT</td>
+<td>RES*</td>
+<td>RE* (supervisory section) + RA*</td>
+<td>R*</td>
+<td>R*</td>
+<td>R*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>LEAVE_OF_ABSENCE</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>READMISSION_REQUEST</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>UPGRADE_MSC_TO_PHD</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="odd">
+<td>SUPERVISOR_SUMMATIVE_REPORT</td>
+<td>R*</td>
+<td>RES* (supervisor fills + submits)</td>
+<td>RA*</td>
+<td>RA* (sign)</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+<tr class="even">
+<td>OTHER_REQUEST</td>
+<td>RES*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>RA*</td>
+<td>Full</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="operational-views" class="level3">
+<h3 class="anchored" data-anchor-id="operational-views">4.3 Operational views</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>view</th>
+<th>student</th>
+<th>supervisor</th>
+<th>dept_hd_rep</th>
+<th>dept_chairperson</th>
+<th>faculty_hd_rep</th>
+<th>system_admin</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Pipeline (case list)</td>
+<td>Own cases</td>
+<td>Assigned cases</td>
+<td>Dept cases</td>
+<td>Dept cases</td>
+<td>All cases</td>
+<td>All cases</td>
+</tr>
+<tr class="even">
+<td>To Do feed</td>
+<td>Own pending actions</td>
+<td>Own assigned pending</td>
+<td>Dept pending</td>
+<td>Dept pending</td>
+<td>All pending</td>
+<td>All</td>
+</tr>
+<tr class="odd">
+<td>Notifications</td>
+<td>Own case notifications</td>
+<td>Assigned case notifications</td>
+<td>Dept case notifications</td>
+<td>Dept</td>
+<td>All</td>
+<td>All</td>
+</tr>
+<tr class="even">
+<td>People / Directory</td>
+<td>—</td>
+<td>Read (internal dir lookup)</td>
+<td>Read</td>
+<td>Read</td>
+<td>Read</td>
+<td>Full</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="data-scoping-rules-row-level-security" class="level2">
+<h2 class="anchored" data-anchor-id="data-scoping-rules-row-level-security">5. Data Scoping Rules (Row-Level Security)</h2>
+<p>Row-level scoping is enforced <strong>server-side in the service layer</strong>, not solely at the middleware level. The following rules determine which <code>title_registration_cases</code> rows an actor may read or act on.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>role</th>
+<th>scoping rule</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>student</code></td>
+<td><code>sasi_students.student_number = users.sasi_id</code> — own student record and associated cases only</td>
+</tr>
+<tr class="even">
+<td><code>supervisor</code></td>
+<td><code>title_registration_cases.form_data_json</code> contains actor’s <code>staff_number</code> or registered <code>email</code> in any supervision field (<code>Supervisor</code>, <code>Administrative Supervisor (Nominal Role)</code>, <code>Co-supervisor</code>, <code>Second Co-supervisor</code>, or corresponding external fields)</td>
+</tr>
+<tr class="odd">
+<td><code>dept_hd_rep</code></td>
+<td><code>sasi_students.department</code> is in actor’s <code>users.departments[]</code> list</td>
+</tr>
+<tr class="even">
+<td><code>dept_chairperson</code></td>
+<td>Same scope as <code>dept_hd_rep</code></td>
+</tr>
+<tr class="odd">
+<td><code>faculty_hd_rep</code></td>
+<td>All cases (no department restriction)</td>
+</tr>
+<tr class="even">
+<td><code>system_admin</code></td>
+<td>All cases</td>
+</tr>
+</tbody>
+</table>
+<p>Additional scoping for sub-entities:</p>
+<ul>
+<li><strong>Supervisor profiles</strong>: supervisor may only read/edit the <code>supervisor_profile_forms</code> row linked to their own identity (matched by <code>staff_number</code> or email against the profile’s <code>person_name</code> / case form data).</li>
+<li><strong>Notifications</strong>: actors see only notifications targeted at their role/case scope.</li>
+<li><strong>External invites</strong>: actors see invite records only for cases within their scope.</li>
+</ul>
+<hr>
+</section>
+<section id="workflow-transition-authorization-map" class="level2">
+<h2 class="anchored" data-anchor-id="workflow-transition-authorization-map">6. Workflow Transition Authorization Map</h2>
+<p>All transition endpoints additionally require:</p>
+<ol type="1">
+<li>JWT authentication (returns <code>401</code> if absent/invalid).</li>
+<li>Role is in the allowed list below (returns <code>403</code> if not).</li>
+<li>Actor is assigned to the case (returns <code>403</code> if not scoped).</li>
+<li>Case is in the correct state for the transition (returns <code>409</code> if not).</li>
+</ol>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>endpoint</th>
+<th>action</th>
+<th>allowed roles</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>POST /cases/:id/student-vet</code></td>
+<td>Submit ROTT for supervisor review</td>
+<td><code>student</code></td>
+</tr>
+<tr class="even">
+<td><code>POST /cases/:id/supervisor-review</code></td>
+<td>Supervisor review decision (approve/return)</td>
+<td><code>supervisor</code> (primary; co-supervisor if policy designates joint review)</td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/dept-review</code></td>
+<td>Departmental FHD vet (approve/return)</td>
+<td><code>dept_hd_rep</code></td>
+</tr>
+<tr class="even">
+<td><code>POST /cases/:id/chairperson-sign</code></td>
+<td>Chairperson sign-off</td>
+<td><code>dept_chairperson</code></td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/dept-send-faculty</code></td>
+<td>Route case to Faculty FHD</td>
+<td><code>dept_hd_rep</code></td>
+</tr>
+<tr class="even">
+<td><code>POST /cases/:id/faculty-review</code></td>
+<td>Faculty FHD review (approve/return)</td>
+<td><code>faculty_hd_rep</code></td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/reminder</code></td>
+<td>Trigger overdue reminder</td>
+<td><code>dept_hd_rep</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>POST /supervisor-profiles/:id/submit</code></td>
+<td>Submit supervisor profile</td>
+<td>profile owner (<code>supervisor</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/mou/complete</code></td>
+<td>Mark MOU complete (all signatures confirmed)</td>
+<td><code>student</code> (initiates; system validates all signature flags)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="module-operation-endpoint-authorization" class="level2">
+<h2 class="anchored" data-anchor-id="module-operation-endpoint-authorization">7. Module Operation Endpoint Authorization</h2>
+<p>Read/edit endpoints require authentication and role + scoping checks but no state gate.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>endpoint</th>
+<th>action</th>
+<th>allowed roles</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>GET /cases/:id</code></td>
+<td>Read case</td>
+<td><code>student*</code>, <code>supervisor*</code>, <code>dept_hd_rep*</code>, <code>dept_chairperson*</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>PATCH /cases/:id/form</code></td>
+<td>Save ROTT edits</td>
+<td><code>student*</code> (draft/in-progress stages only)</td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/print</code></td>
+<td>Generate ROTT PDF</td>
+<td><code>student*</code>, <code>supervisor*</code>, <code>dept_hd_rep*</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>GET /cases/:id/supervisor-profiles</code></td>
+<td>Read profiles</td>
+<td>all roles (scoped per role)</td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/supervisor-profiles/request</code></td>
+<td>Request profile completion</td>
+<td><code>student*</code>, <code>dept_hd_rep*</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>POST /cases/:id/supervisor-profiles/reminder</code></td>
+<td>Send profile reminder</td>
+<td><code>dept_hd_rep*</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="odd">
+<td><code>PATCH /supervisor-profiles/:id</code></td>
+<td>Edit profile</td>
+<td>profile owner (<code>supervisor*</code>)</td>
+</tr>
+<tr class="even">
+<td><code>POST /supervisor-profiles/:id/upload-cv</code></td>
+<td>Upload CV</td>
+<td>profile owner (<code>supervisor*</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>GET /cases/:id/mou</code></td>
+<td>Read MOU</td>
+<td>all roles (scoped per role)</td>
+</tr>
+<tr class="even">
+<td><code>PATCH /cases/:id/mou</code></td>
+<td>Save MOU draft</td>
+<td><code>student*</code>, <code>supervisor*</code>, <code>dept_hd_rep*</code>, <code>dept_chairperson*</code></td>
+</tr>
+<tr class="odd">
+<td><code>POST /cases/:id/mou/print</code></td>
+<td>Generate MOU PDF</td>
+<td><code>student*</code>, <code>supervisor*</code>, <code>dept_hd_rep*</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>GET /cases/:id/external-invites</code></td>
+<td>Read invite statuses</td>
+<td><code>student*</code>, <code>supervisor*</code>, <code>dept_hd_rep*</code>, <code>system_admin</code></td>
+</tr>
+<tr class="odd">
+<td><code>POST /directory/external-academics/invite</code></td>
+<td>Create external invite</td>
+<td><code>student*</code>, <code>dept_hd_rep*</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>GET /pipeline</code></td>
+<td>Read case pipeline</td>
+<td>all roles (scoped per role)</td>
+</tr>
+<tr class="odd">
+<td><code>GET /to-do</code></td>
+<td>Read To Do feed</td>
+<td>all roles (scoped per role)</td>
+</tr>
+<tr class="even">
+<td><code>GET /notifications</code></td>
+<td>Read notifications</td>
+<td>all roles (scoped per role)</td>
+</tr>
+<tr class="odd">
+<td><code>GET /directory/staff</code></td>
+<td>Read internal staff directory</td>
+<td><code>supervisor</code>, <code>dept_hd_rep</code>, <code>dept_chairperson</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+<tr class="even">
+<td><code>GET /directory/external-academics</code></td>
+<td>Read external registry</td>
+<td><code>supervisor*</code>, <code>dept_hd_rep</code>, <code>faculty_hd_rep</code>, <code>system_admin</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>*</code> = also subject to row-level scoping from Section 5.</p>
+<hr>
+</section>
+<section id="external-tokenized-access" class="level2">
+<h2 class="anchored" data-anchor-id="external-tokenized-access">8. External / Tokenized Access</h2>
+<p>External academics (supervisors, examiners, arbiters) never hold a platform login. Their access is:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>endpoint</th>
+<th>access model</th>
+<th>security rules</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>GET /directory/external-academics/invites/:token</code></td>
+<td>Token-validated public endpoint</td>
+<td>Token must be <code>pending</code>, not expired. Returns salutation context only — no full case data.</td>
+</tr>
+<tr class="even">
+<td><code>POST /directory/external-academics/invites/:token/complete</code></td>
+<td>Token-validated public write</td>
+<td>Token must be <code>pending</code>, not expired. Write scope is bounded to updating the specific <code>external_academic_registry</code> record and syncing the linked case role fields only. Token status is set to <code>completed</code> on success (single-use).</td>
+</tr>
+</tbody>
+</table>
+<p>Token security requirements:</p>
+<ul>
+<li>Tokens are cryptographically random and sufficiently long (minimum 32 bytes, URL-safe encoded).</li>
+<li>Tokens must be stored as hashes (or at minimum not in plaintext) in production.</li>
+<li>Tokens expire according to <code>external_academic_profile_invites.expires_at</code>.</li>
+<li>Expired tokens return <code>410 Gone</code>.</li>
+<li>Completed tokens return <code>409 Conflict</code> if resubmitted.</li>
+<li>The invite endpoint must not expose case-level data (thesis content, student details) beyond the minimum required salutation context.</li>
+</ul>
+<hr>
+</section>
+<section id="security-requirements" class="level2">
+<h2 class="anchored" data-anchor-id="security-requirements">9. Security Requirements</h2>
+<section id="transport-and-session" class="level3">
+<h3 class="anchored" data-anchor-id="transport-and-session">9.1 Transport and session</h3>
+<ol type="1">
+<li>HTTPS required for all endpoints in production (<code>NODE_ENV=production</code>). HTTP connections must be redirected.</li>
+<li>JWT access tokens: short-lived (15–60 minute TTL).</li>
+<li>JWT refresh tokens: httpOnly Secure cookie, 7-day TTL, rotated on use.</li>
+<li>Token revocation: maintain a short-lived blocklist (Redis or equivalent) for logout/revocation until natural expiry; or use sufficiently short TTL with no persistent sessions.</li>
+<li><code>/auth/dev-login</code> endpoint is gated by <code>ENABLE_DEV_AUTH=true</code> (local only). Must be disabled (<code>false</code>) in production. Any request to this endpoint in production must return <code>404 Not Found</code>.</li>
+</ol>
+</section>
+<section id="transport-hardening" class="level3">
+<h3 class="anchored" data-anchor-id="transport-hardening">9.2 Transport hardening</h3>
+<ol type="1">
+<li>CORS: restrict <code>Access-Control-Allow-Origin</code> to the known client origin. No wildcard (<code>*</code>) in production.</li>
+<li>Secure cookie flags: <code>Secure</code>, <code>HttpOnly</code>, <code>SameSite=Strict</code> for all auth cookies.</li>
+<li>Set <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: DENY</code>, <code>Content-Security-Policy</code> headers.</li>
+</ol>
+</section>
+<section id="credential-and-input-security" class="level3">
+<h3 class="anchored" data-anchor-id="credential-and-input-security">9.3 Credential and input security</h3>
+<ol type="1">
+<li>Passwords hashed with bcrypt (minimum cost factor 12).</li>
+<li>No credentials, tokens, or secrets in query strings or response bodies beyond the initial auth handshake.</li>
+<li>All user-supplied input validated and sanitised server-side before persistence (no raw string interpolation into SQL).</li>
+<li>Rate limiting on <code>/auth/*</code> endpoints to prevent brute force (e.g., max 10 attempts per 15 min per IP).</li>
+</ol>
+</section>
+<section id="audit-and-observability" class="level3">
+<h3 class="anchored" data-anchor-id="audit-and-observability">9.4 Audit and observability</h3>
+<ol type="1">
+<li>Every workflow transition records: <code>actor_id</code>, <code>actor_role</code>, <code>case_id</code>, <code>from_state</code>, <code>to_state</code>, <code>timestamp</code>, <code>comments</code>. This feeds into the existing notification/audit infrastructure.</li>
+<li>Unauthorized access attempts (<code>401</code>, <code>403</code>) are logged with actor identity (if available), endpoint, and timestamp.</li>
+<li>External invite completion events record: <code>invite_id</code>, <code>token_hash</code>, <code>submitted_at</code>, <code>registry_id_created_or_updated</code>.</li>
+</ol>
+</section>
+<section id="principle-of-least-privilege" class="level3">
+<h3 class="anchored" data-anchor-id="principle-of-least-privilege">9.5 Principle of least privilege</h3>
+<ol type="1">
+<li>Default deny: no endpoint is accessible without an explicit allow rule in the authorization layer.</li>
+<li>Supervisors cannot read cases outside their named assignments, regardless of department.</li>
+<li>Dept-scoped roles cannot read cases outside their assigned department(s).</li>
+<li>Profile owners cannot edit other supervisors’ profiles, even within the same case.</li>
+<li>External invite tokens are scoped to a single invite, role, and case — they cannot be used to access any other resource.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="implementation-status-and-gaps" class="level2">
+<h2 class="anchored" data-anchor-id="implementation-status-and-gaps">10. Implementation Status and Gaps</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>item</th>
+<th>status</th>
+<th>tracking</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>JWT Bearer auth on transition endpoints</td>
+<td>Deployed</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>Actor-to-case assignment checks on transition endpoints</td>
+<td>Deployed</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td><code>ENABLE_DEV_AUTH</code> flag for dev identity issuance</td>
+<td>Deployed</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td><code>users</code> table role enum expansion (5 roles + admin)</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="odd">
+<td><code>users.staff_number</code> + <code>users.departments</code> fields</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="even">
+<td>JWT auth middleware on non-transition endpoints</td>
+<td><strong>Partial</strong> (workflow case/profile/feed endpoints protected)</td>
+<td>AD-004</td>
+</tr>
+<tr class="odd">
+<td>Row-level scoping enforcement in service layer</td>
+<td><strong>Partial</strong> (case/profile scoped workflow middleware deployed for protected workflow endpoints)</td>
+<td>AD-004</td>
+</tr>
+<tr class="even">
+<td>Password hash storage + login endpoint</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="odd">
+<td>Production identity provider integration (replace dev login)</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="even">
+<td>Refresh token rotation + revocation</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="odd">
+<td>Audit logging for unauthorized attempts</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="even">
+<td>External invite token hardening (hash storage, single-use)</td>
+<td><strong>Partial</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="odd">
+<td>CORS production lock-down</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+<tr class="even">
+<td>Rate limiting on auth endpoints</td>
+<td><strong>Not done</strong></td>
+<td>AD-004</td>
+</tr>
+</tbody>
+</table>
+<p>All items above are required before production deployment. The current dev-login flow (<code>/auth/dev-login</code>) must not reach production.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

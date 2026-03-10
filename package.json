@@ -1,0 +1,22 @@
+{
+  "name": "fhd-process-automation",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A workflow platform to automate postgraduate administrative processes.",
+  "workspaces": [
+    "client",
+    "server",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "build:client": "npm run build --workspace=client",
+    "build:server": "npm run build --workspace=server",
+    "test:server": "npm run test --workspace=server",
+    "start": "npm start --workspace=server"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
