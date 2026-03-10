@@ -1,5 +1,16 @@
 import { Request, Response } from 'express';
 import * as titleRegistrationService from '../services/titleRegistrationService';
+import { toAppError } from '../errors/httpErrors';
+
+function handleControllerError(
+  res: Response,
+  error: unknown,
+  fallback: { statusCode: number; code: string; message: string },
+): void {
+  const appError = toAppError(error, fallback);
+  const message = appError.exposeMessage ? appError.message : fallback.message;
+  res.status(appError.statusCode).json({ message, code: appError.code, details: appError.details });
+}
 
 export const createTitleRegistration = async (req: Request, res: Response) => {
     try {
@@ -11,8 +22,7 @@ export const createTitleRegistration = async (req: Request, res: Response) => {
         const newRegistration = await titleRegistrationService.create(req.body);
         res.status(201).json(newRegistration);
     } catch (error) {
-        // A simple error handler
-        res.status(500).json({ message: 'Error creating title registration', error });
+        handleControllerError(res, error, { statusCode: 500, code: 'title_registration_create_failed', message: 'Error creating title registration.' });
     }
 };
 
@@ -26,7 +36,7 @@ export const getTitleRegistrationById = async (req: Request, res: Response) => {
             res.status(404).json({ message: 'Title registration not found' });
         }
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving title registration', error });
+        handleControllerError(res, error, { statusCode: 500, code: 'title_registration_get_failed', message: 'Error retrieving title registration.' });
     }
 };
 
@@ -35,6 +45,6 @@ export const getAllTitleRegistrations = async (req: Request, res: Response) => {
         const registrations = await titleRegistrationService.getAll();
         res.status(200).json(registrations);
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving title registrations', error });
+        handleControllerError(res, error, { statusCode: 500, code: 'title_registration_list_failed', message: 'Error retrieving title registrations.' });
     }
 }

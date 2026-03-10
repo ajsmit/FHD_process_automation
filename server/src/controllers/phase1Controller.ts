@@ -6,6 +6,17 @@ import {
   submitTitleRegistration,
   type WorkflowStep,
 } from '../services/phase1WorkflowService';
+import { toAppError } from '../errors/httpErrors';
+
+function handleControllerError(
+  res: Response,
+  error: unknown,
+  fallback: { statusCode: number; code: string; message: string },
+): void {
+  const appError = toAppError(error, fallback);
+  const message = appError.exposeMessage ? appError.message : fallback.message;
+  res.status(appError.statusCode).json({ message, code: appError.code, details: appError.details });
+}
 
 function parseStep(step: string): WorkflowStep | null {
   const allowed: WorkflowStep[] = ['mou', 'title_registration', 'supervisor_profile', 'examiners'];
@@ -18,7 +29,7 @@ export async function getWorkflow(req: Request, res: Response): Promise<void> {
     const result = await getOrCreateWorkflow(studentNumber);
     res.status(200).json(result);
   } catch (error) {
-    res.status(404).json({ message: 'Workflow or student not found', error: error instanceof Error ? error.message : error });
+    handleControllerError(res, error, { statusCode: 404, code: 'phase1_workflow_fetch_failed', message: 'Workflow or student not found.' });
   }
 }
 
@@ -38,7 +49,7 @@ export async function completeStep(req: Request, res: Response): Promise<void> {
     const result = await markStepCompleted(studentNumber, step);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to complete step' });
+    handleControllerError(res, error, { statusCode: 400, code: 'phase1_step_complete_failed', message: 'Failed to complete step.' });
   }
 }
 
@@ -61,7 +72,7 @@ export async function createTitleRegistration(req: Request, res: Response): Prom
 
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to submit title registration', error });
+    handleControllerError(res, error, { statusCode: 500, code: 'phase1_title_registration_failed', message: 'Failed to submit title registration.' });
   }
 }
 
@@ -81,6 +92,6 @@ export async function generatePdf(req: Request, res: Response): Promise<void> {
     const result = await generateStepPdf(studentNumber, step);
     res.status(200).json(result);
   } catch (error) {
-    res.status(400).json({ message: error instanceof Error ? error.message : 'Failed to generate PDF' });
+    handleControllerError(res, error, { statusCode: 400, code: 'phase1_pdf_generate_failed', message: 'Failed to generate PDF.' });
   }
 }

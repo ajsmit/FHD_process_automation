@@ -166,6 +166,6 @@ Exit criteria:
 4. Address AD-004: replace dev-login simulation path with production identity/session model and finish full route-surface authorization parity.
 5. Completed 2026-03-10 (AD-017): deployed zod-based request boundary validation middleware/schemas across auth, workflow, directory, SASI, and legacy phase1/title-registration route surfaces.
 6. Completed 2026-03-10 (AD-016): expanded server coverage with controller smoke, middleware auth/validation, and API route smoke tests alongside existing service-level tests.
-7. In progress 2026-03-10 (AD-018): introduced centralized error classes/middleware and structured logging; continue controller-surface migration to standard response codes/shapes.
+7. Completed 2026-03-10 (AD-018): standardized controller error handling via centralized error classes/middleware and structured logging with unified `{ message, code, details }` responses.
 8. Address AD-010: eliminate client/server DTO drift via generated/shared API contracts.
 9. Complete post-AD-001 decomposition by splitting remaining `titleRegistrationWorkflowService.ts` bounded domains (ROTT case orchestration vs MOU vs profiles).
