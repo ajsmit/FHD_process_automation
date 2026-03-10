@@ -9,7 +9,9 @@ import {
   isSystemAdminRole,
 } from '../auth/roleService';
 import db from '../db/knex';
+import { logger } from '../logging/logger';
 import type { FormData } from '../services/contracts/titleRegistration';
+import { isTransientDatabaseError, retryWithBackoff, settleAll } from '../utils/resilience';
 
 type CaseOperationAction =
   | 'case_read'
@@ -66,15 +68,30 @@ function parseProfileId(req: Request): number {
 }
 
 async function hasSasiStaffRole(sasiId: string, role: string, department?: string): Promise<boolean> {
-  let query = db('sasi_staff').where({
-    staff_number: sasiId,
-    role,
+  return retryWithBackoff(async () => {
+    let query = db('sasi_staff').where({
+      staff_number: sasiId,
+      role,
+    });
+    if (department) {
+      query = query.andWhere('department', department);
+    }
+    const row = await query.first();
+    return Boolean(row);
+  }, {
+    shouldRetry: isTransientDatabaseError,
+    onRetry: (error, attempt, delayMs) => {
+      logger.warn('Retrying sasi_staff role lookup after transient database failure.', {
+        scope: 'workflow_authorization',
+        sasiId,
+        role,
+        department,
+        attempt,
+        delayMs,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
   });
-  if (department) {
-    query = query.andWhere('department', department);
-  }
-  const row = await query.first();
-  return Boolean(row);
 }
 
 function isAssignedSupervisor(userFirst: string, userLast: string, formData: FormData): boolean {
@@ -110,12 +127,29 @@ async function loadCaseContext(caseId: number): Promise<CaseContext> {
 }
 
 async function adminScopeFlags(sasiId: string, department: string): Promise<{ dept: boolean; chair: boolean; faculty: boolean }> {
-  const [dept, chair, faculty] = await Promise.all([
+  const results = await settleAll([
     hasSasiStaffRole(sasiId, 'dept_fhd_rep', department),
     hasSasiStaffRole(sasiId, 'hod', department),
     hasSasiStaffRole(sasiId, 'faculty_fhd_rep'),
   ]);
-  return { dept, chair, faculty };
+  const [deptResult, chairResult, facultyResult] = results;
+
+  if (!deptResult.ok || !chairResult.ok || !facultyResult.ok) {
+    logger.warn('Partial failure while resolving legacy admin scope flags; applying degraded authorization fallback.', {
+      scope: 'workflow_authorization',
+      sasiId,
+      department,
+      deptError: deptResult.ok ? null : String(deptResult.reason),
+      chairError: chairResult.ok ? null : String(chairResult.reason),
+      facultyError: facultyResult.ok ? null : String(facultyResult.reason),
+    });
+  }
+
+  return {
+    dept: deptResult.ok ? deptResult.value : false,
+    chair: chairResult.ok ? chairResult.value : false,
+    faculty: facultyResult.ok ? facultyResult.value : false,
+  };
 }
 
 async function authorizeCaseOperation(req: Request, action: CaseOperationAction): Promise<boolean> {

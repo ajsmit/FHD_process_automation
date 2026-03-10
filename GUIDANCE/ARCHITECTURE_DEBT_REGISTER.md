@@ -26,7 +26,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 | AD-017 | API boundary validation was ad-hoc (manual enum checks, `req.body as Partial<FormData>` casts, and scattered controller/service checks). Request-schema validation middleware is now deployed across route boundaries (auth, workflow, directory, SASI, and legacy phase1/title routes) with shared zod schemas. | High correctness risk; invalid or malformed data can persist to the database; client-side validation can be bypassed entirely. | High | Closed | Implemented shared zod request schemas + validation middleware (`validateBody`, `validateParams`, `validateQuery`) and applied them across POST/PATCH and parameterized/query routes. |
 | AD-018 | Error handling was inconsistent across controllers: HTTP status codes for similar failures varied, message/shape drift existed, and logging was mostly ad-hoc console output. Centralized error classes/middleware and structured logging are now applied across controller surfaces with standardized response payloads. | Medium observability and ops risk; production failures are difficult to diagnose; inconsistent client-facing error shapes complicate UI error handling. | Medium | Closed | Implemented centralized `AppError` stack + global error middleware + structured logger and migrated controllers to standardized `{ message, code, details }` error responses. |
 | AD-019 | No API contract artefact (OpenAPI/Swagger spec) is generated or maintained. The server's TypeScript types in `server/src/services/contracts/titleRegistration.ts` are the only machine-readable contract, but they are not shared or validated at the transport level. The legacy phase-1 410-Gone endpoints have no documented sunset timeline. This is distinct from AD-010 (enum string-literal drift); that item tracks the synchronisation mechanism, this item tracks the absence of a versioning and documentation strategy. | Medium integration risk; breaking API changes are not caught until client integration; no migration path for consumers of deprecated endpoints. | Medium | Closed | Added route-derived OpenAPI generation (`server/src/contracts/generateOpenApi.ts`) producing `server/openapi/openapi.v1.json`, enforced contract sync in CI (`scripts/check-openapi-contract.sh` + workflow), and documented v1/v2 + legacy `410` sunset policy in tech spec. |
-| AD-025 | Several `Promise.all()` calls are used for parallel fetches where partial failure causes the entire operation to fail. Examples include staff-email lookups in `workflowAuthorization.ts` (dept/chair/faculty fetched in parallel; one DB timeout causes a 403), and notification/profile loads in `operationsFeedService.ts`. No retry, backoff, or circuit-breaker logic exists. | Medium resilience risk; transient database timeouts or directory-service blips cause cascading auth or feed failures that appear as hard errors to the user. | Medium | Open | Audit all `Promise.all()` call sites; replace with `Promise.allSettled()` for non-critical parallel loads where partial results are acceptable. Add retry/backoff for critical external lookups (staff email, SASI check). Document which failures are expected to be fatal vs. degraded. |
+| AD-025 | Several `Promise.all()` calls are used for parallel fetches where partial failure causes the entire operation to fail. Examples include staff-email lookups in `workflowAuthorization.ts` (dept/chair/faculty fetched in parallel; one DB timeout causes a 403), and notification/profile loads in `operationsFeedService.ts`. No retry, backoff, or circuit-breaker logic exists. | Medium resilience risk; transient database timeouts or directory-service blips cause cascading auth or feed failures that appear as hard errors to the user. | Medium | Closed | Introduced shared resilience helpers (`retryWithBackoff`, `settleAll`) and applied degraded partial-failure handling for auth scope/feed enrichment plus retry/backoff on critical SASI/staff lookups. |
 
 ## Resolution Notes
 1. AD-001 closed on 2026-03-10 after extraction wiring:
@@ -321,6 +321,21 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - added CI drift guard `scripts/check-openapi-contract.sh` and workflow enforcement step in `.github/workflows/main.yml`.
 - documented API versioning + deprecation policy and legacy `410` endpoint sunset timeline in `GUIDANCE/PG_PLATFORM_TECH_SPEC.md` (`5.5 OpenAPI Contract, Versioning, And Sunset Policy`).
 - AD-019 marked Closed.
+42. AD-025 closure update on 2026-03-10 (resilience and degraded-fallback tranche):
+- added shared resilience utilities in `server/src/utils/resilience.ts`:
+  - `retryWithBackoff(...)` for bounded transient retries with exponential backoff
+  - `settleAll(...)` for non-fail-fast parallel aggregation
+- hardened legacy-admin scope resolution in:
+  - `server/src/middleware/workflowAuthorization.ts`
+  - `server/src/services/workflow/nextWaveModulesService.ts`
+  - `server/src/services/workflow/changeRequestModulesService.ts`
+  by replacing fail-fast parallel role checks with settle-based degraded evaluation.
+- hardened critical lookups with retries:
+  - `server/src/services/titleRegistrationWorkflowService.ts` staff email lookup (`getStaffEmail`)
+  - `server/src/services/sasiService.ts` SASI API requests (network/429/5xx retry policy).
+- hardened ops feed enrichment in `server/src/services/operationsFeedService.ts` to return degraded rows when per-case enrichment fails instead of failing the entire pipeline response.
+- added resilience unit tests in `server/src/utils/resilience.test.ts`.
+- AD-025 marked Closed.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

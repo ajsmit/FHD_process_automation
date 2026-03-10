@@ -16,6 +16,7 @@ import type {
   FormData,
   ModuleFormRecord,
 } from '../contracts/titleRegistration';
+import { isTransientDatabaseError, retryWithBackoff, settleAll } from '../../utils/resilience';
 import {
   getOrCreateModuleRecord,
   printModulePdf,
@@ -118,12 +119,16 @@ function isAssignedSupervisor(actor: AuthUserLike, formData: FormData): boolean 
 }
 
 async function hasSasiStaffRole(sasiId: string, role: string, department?: string): Promise<boolean> {
-  let query = db('sasi_staff').where({ staff_number: sasiId, role });
-  if (department) {
-    query = query.andWhere('department', department);
-  }
-  const row = await query.first();
-  return Boolean(row);
+  return retryWithBackoff(async () => {
+    let query = db('sasi_staff').where({ staff_number: sasiId, role });
+    if (department) {
+      query = query.andWhere('department', department);
+    }
+    const row = await query.first();
+    return Boolean(row);
+  }, {
+    shouldRetry: isTransientDatabaseError,
+  });
 }
 
 async function assertAuthorization(actor: AuthUserLike, caseId: number, action: RoleAction): Promise<FormData> {
@@ -142,11 +147,14 @@ async function assertAuthorization(actor: AuthUserLike, caseId: number, action: 
       if (!isLegacyAdminRole(actor.role)) {
         throw new Error('Actor is not authorised for this module operation.');
       }
-      const [dept, chair, faculty] = await Promise.all([
+      const [deptResult, chairResult, facultyResult] = await settleAll([
         hasSasiStaffRole(actor.sasiId, 'dept_fhd_rep', department),
         hasSasiStaffRole(actor.sasiId, 'hod', department),
         hasSasiStaffRole(actor.sasiId, 'faculty_fhd_rep'),
       ]);
+      const dept = deptResult.ok ? deptResult.value : false;
+      const chair = chairResult.ok ? chairResult.value : false;
+      const faculty = facultyResult.ok ? facultyResult.value : false;
       if (dept || chair || faculty) return formData;
     }
     throw new Error('Actor is not authorised for this module operation.');

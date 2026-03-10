@@ -77,6 +77,11 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - wired `npm run openapi:generate --workspace=server` and root contract check `npm run check:openapi-contract`
   - enforced contract drift check in CI (`scripts/check-openapi-contract.sh`)
   - documented `/api/v1` versioning policy and legacy `410` sunset timeline in `PG_PLATFORM_TECH_SPEC.md`
+- AD-025 resilience slice completed:
+  - introduced shared retry/degraded-settlement helpers (`server/src/utils/resilience.ts`)
+  - replaced fail-fast parallel admin-scope checks with settle-based fallback in workflow/module authorization paths
+  - added retry/backoff for critical staff email lookup + SASI API calls
+  - hardened operations feed pipeline enrichment to return partial/degraded rows instead of failing full response
 - AD-012 UI decomposition slice completed:
   - decomposed dashboard page/panels into bounded components and domain hooks (`page.tsx` reduced from 2411 to 446 lines)
   - split module panel monolith into `PhaseBModulePanels.tsx` + `ChangeRequestModulePanels.tsx`

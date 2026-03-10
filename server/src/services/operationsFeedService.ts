@@ -1,6 +1,8 @@
 import db from '../db/knex';
 import { decryptInviteToken } from '../auth/inviteTokenService';
+import { logger } from '../logging/logger';
 import type { MouFormRecord, SupervisorProfileForm } from './contracts/titleRegistration';
+import { settleAll } from '../utils/resilience';
 
 export async function listPipelineItems(): Promise<Array<Record<string, unknown>>> {
   const baseRows = await db('title_registration_cases')
@@ -16,7 +18,7 @@ export async function listPipelineItems(): Promise<Array<Record<string, unknown>
     )
     .orderBy('title_registration_cases.updated_at', 'desc');
 
-  const withProfiles = await Promise.all(
+  const rowResults = await settleAll(
     baseRows.map(async (row) => {
       const profiles = await db<SupervisorProfileForm>('supervisor_profile_forms')
         .where({ case_id: Number(row.id) })
@@ -32,6 +34,24 @@ export async function listPipelineItems(): Promise<Array<Record<string, unknown>
       };
     }),
   );
+  const withProfiles = rowResults.map((result, index) => {
+    if (result.ok) {
+      return result.value;
+    }
+    const base = baseRows[index];
+    logger.warn('Pipeline enrichment failed for one case row; returning degraded row.', {
+      scope: 'operations_feed',
+      caseId: Number(base.id),
+      error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+    });
+    return {
+      ...base,
+      supervisor_profiles_total: 0,
+      supervisor_profiles_completed: 0,
+      mou_status: 'unknown',
+      title_formalities_finalised: false,
+    };
+  });
 
   return withProfiles;
 }

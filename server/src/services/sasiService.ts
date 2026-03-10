@@ -1,4 +1,5 @@
 import db from '../db/knex';
+import { retryWithBackoff } from '../utils/resilience';
 
 export interface SasiStudent {
   id: number;
@@ -98,16 +99,33 @@ async function fetchFromSasiApi(path: string): Promise<unknown> {
     throw new Error('SASI_API_ENDPOINT is required when SASI_PROVIDER=api');
   }
   const key = sasiApiKey();
-  const response = await fetch(`${base}${path}`, {
-    headers: {
-      ...(key ? { Authorization: `Bearer ${key}` } : {}),
-      Accept: 'application/json',
+  return retryWithBackoff(async () => {
+    const response = await fetch(`${base}${path}`, {
+      headers: {
+        ...(key ? { Authorization: `Bearer ${key}` } : {}),
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const error = new Error(`SASI API request failed (${response.status})`) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
+    }
+    return response.json();
+  }, {
+    maxAttempts: 3,
+    initialDelayMs: 75,
+    maxDelayMs: 600,
+    shouldRetry: (error) => {
+      if (error instanceof TypeError) {
+        return true;
+      }
+      const status = typeof (error as { status?: unknown })?.status === 'number'
+        ? Number((error as { status?: number }).status)
+        : 0;
+      return status === 429 || status >= 500;
     },
   });
-  if (!response.ok) {
-    throw new Error(`SASI API request failed (${response.status})`);
-  }
-  return response.json();
 }
 
 async function searchStudentsApi(params: SearchParams): Promise<SasiStudent[]> {

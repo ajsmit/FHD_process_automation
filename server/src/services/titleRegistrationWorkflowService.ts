@@ -2,8 +2,10 @@ import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import db from '../db/knex';
+import { logger } from '../logging/logger';
 import type { SasiStudent } from './sasiService';
 import { getStudentByNumber } from './sasiService';
+import { isTransientDatabaseError, retryWithBackoff } from '../utils/resilience';
 import type {
   CaseStatus,
   FormData,
@@ -601,7 +603,21 @@ async function queueEmail(caseId: number, recipients: string[], subject: string,
 }
 
 async function getStaffEmail(role: string): Promise<string[]> {
-  const rows = await db('sasi_staff').where({ role }).select('email');
+  const rows = await retryWithBackoff(
+    async () => db('sasi_staff').where({ role }).select('email'),
+    {
+      shouldRetry: isTransientDatabaseError,
+      onRetry: (error, attempt, delayMs) => {
+        logger.warn('Retrying staff email lookup after transient database failure.', {
+          scope: 'title_registration_workflow',
+          role,
+          attempt,
+          delayMs,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      },
+    },
+  );
   return rows.map((r: { email: string }) => r.email);
 }
 

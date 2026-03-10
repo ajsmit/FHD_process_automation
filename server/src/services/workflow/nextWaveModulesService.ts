@@ -18,6 +18,7 @@ import type {
   IntentionToSubmitFormData,
   ModuleFormRecord,
 } from '../contracts/titleRegistration';
+import { isTransientDatabaseError, retryWithBackoff, settleAll } from '../../utils/resilience';
 import {
   assertModuleHasSubmittedState,
   getOrCreateModuleRecord,
@@ -143,12 +144,16 @@ function requiredCompletionPercent<T extends object>(formData: T, requiredKeys: 
 }
 
 async function hasSasiStaffRole(sasiId: string, role: string, department?: string): Promise<boolean> {
-  let query = db('sasi_staff').where({ staff_number: sasiId, role });
-  if (department) {
-    query = query.andWhere('department', department);
-  }
-  const row = await query.first();
-  return Boolean(row);
+  return retryWithBackoff(async () => {
+    let query = db('sasi_staff').where({ staff_number: sasiId, role });
+    if (department) {
+      query = query.andWhere('department', department);
+    }
+    const row = await query.first();
+    return Boolean(row);
+  }, {
+    shouldRetry: isTransientDatabaseError,
+  });
 }
 
 function isAssignedSupervisor(actor: AuthUserLike, formData: FormData): boolean {
@@ -186,11 +191,14 @@ async function assertModuleAuthorization(actor: AuthUserLike, caseId: number, ac
       if (!isLegacyAdminRole(actor.role)) {
         throw new Error('Actor is not authorised for module read/print on this case.');
       }
-      const [dept, chair, faculty] = await Promise.all([
+      const [deptResult, chairResult, facultyResult] = await settleAll([
         hasSasiStaffRole(actor.sasiId, 'dept_fhd_rep', studentDepartment),
         hasSasiStaffRole(actor.sasiId, 'hod', studentDepartment),
         hasSasiStaffRole(actor.sasiId, 'faculty_fhd_rep'),
       ]);
+      const dept = deptResult.ok ? deptResult.value : false;
+      const chair = chairResult.ok ? chairResult.value : false;
+      const faculty = facultyResult.ok ? facultyResult.value : false;
       if (dept || chair || faculty) {
         return { formData, studentDepartment, studentNumber };
       }
