@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from '../auth/passwordService';
 import {
   parseTrustedHeaderIdentity,
   resolveAuthProvider,
+  verifyProviderSourceIp,
   verifyProviderSharedSecret,
 } from '../auth/providerAuthService';
 import {
@@ -29,6 +30,9 @@ interface UserRow {
 }
 
 function devAuthEnabled(): boolean {
+  if (resolveAuthProvider() !== 'local_password') {
+    return false;
+  }
   const env = (process.env.ENABLE_DEV_AUTH ?? ((process.env.NODE_ENV ?? 'development') === 'production' ? 'false' : 'true'))
     .trim()
     .toLowerCase();
@@ -195,6 +199,20 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
 export async function postProviderLogin(req: Request, res: Response): Promise<void> {
   if (resolveAuthProvider() !== 'trusted_header') {
     res.status(404).json({ message: 'Not found.' });
+    return;
+  }
+
+  const sourceCheck = verifyProviderSourceIp(req);
+  if (!sourceCheck.allowed) {
+    await logAuthAuditEvent({
+      eventType: 'provider_login_failed_untrusted_source',
+      route: req.originalUrl,
+      method: req.method,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent') ?? '',
+      details: { reason: sourceCheck.reason },
+    });
+    res.status(401).json({ message: 'Provider authentication failed.' });
     return;
   }
 

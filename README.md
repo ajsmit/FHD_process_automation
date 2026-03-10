@@ -149,6 +149,7 @@ Server (`server/.env`):
 - `REFRESH_TOKEN_TTL_DAYS`, `DEMO_USER_PASSWORD`
 - `AUTH_PROVIDER` (`local_password` or `trusted_header`)
 - `AUTH_PROVIDER_SHARED_SECRET` + trusted-header names when using `trusted_header`
+- `AUTH_PROVIDER_TRUSTED_PROXY_IPS` (trusted source IPs for `trusted_header`; include `127.0.0.1,::1` for local testing)
 - `AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `CORS_ALLOWED_ORIGINS`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (required for automatic external profile invite email delivery)
 
@@ -212,5 +213,7 @@ See `PROJECT_IMPLEMENTATION_PLAN.md` for phased scope.
   - faculty reviewer: `STAFF-004`
   - chairperson: `STAFF-005`
 - Auth attempts are rate-limited by `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX_REQUESTS`.
+- In trusted-header mode, provider login requests are accepted only from `AUTH_PROVIDER_TRUSTED_PROXY_IPS`.
+- Local testing on `127.0.0.1` is supported by default in env templates (`CORS_ALLOWED_ORIGINS` includes `http://127.0.0.1:3000`).
 - External invite tokens are validated by hash and encrypted at rest.
 - Legacy route families are disabled by default (`ENABLE_LEGACY_PHASE1=false`) and return `410`.

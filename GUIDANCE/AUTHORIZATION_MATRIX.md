@@ -337,7 +337,7 @@ Token security requirements:
 | JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes now also protected) | AD-004 |
 | Row-level scoping enforcement in service layer | **Partial** (case/profile scoped workflow middleware deployed for protected workflow endpoints) | AD-004 |
 | Password hash storage + login endpoint | **Deployed** (`POST /api/v1/auth/login`, seeded demo password hash) | AD-004 |
-| Production identity provider integration (replace dev login) | **Partial** (`AUTH_PROVIDER=trusted_header` + `/auth/provider-login` adapter seam implemented; enterprise IdP/proxy rollout and ops hardening pending) | AD-004 |
+| Production identity provider integration (replace dev login) | **Partial** (`AUTH_PROVIDER=trusted_header` + `/auth/provider-login` adapter seam + trusted source IP enforcement implemented; enterprise IdP/proxy rollout and ops hardening pending) | AD-004 |
 | Refresh token rotation + revocation | **Deployed** (`/auth/refresh`, `/auth/logout`, `/auth/logout-all`) | AD-004 |
 | Audit logging for unauthorized attempts | **Deployed** (`auth_audit_events` + auth/authorization middleware/controller events) | AD-004 |
 | External invite token hardening (hash storage, single-use) | **Deployed (baseline)** (hash-validated token lookup + encrypted token at rest + single-use completion state) | AD-004 |
