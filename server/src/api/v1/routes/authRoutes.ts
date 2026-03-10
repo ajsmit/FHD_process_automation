@@ -10,6 +10,12 @@ import {
 } from '../../../controllers/authController';
 import { requireAuth } from '../../../middleware/auth';
 import { createRateLimit } from '../../../middleware/rateLimit';
+import { validateBody } from '../../../middleware/requestValidation';
+import {
+  devLoginBodySchema,
+  loginBodySchema,
+  refreshTokenBodySchema,
+} from '../../../validation/requestSchemas';
 
 const router = express.Router();
 
@@ -35,12 +41,13 @@ const refreshRateLimit = createRateLimit({
 router.post(
   '/dev-login',
   loginRateLimit,
+  validateBody(devLoginBodySchema),
   postDevLogin,
 );
-router.post('/login', loginRateLimit, postLogin);
+router.post('/login', loginRateLimit, validateBody(loginBodySchema), postLogin);
 router.post('/provider-login', loginRateLimit, postProviderLogin);
-router.post('/refresh', refreshRateLimit, postRefresh);
-router.post('/logout', requireAuth, postLogout);
+router.post('/refresh', refreshRateLimit, validateBody(refreshTokenBodySchema), postRefresh);
+router.post('/logout', requireAuth, validateBody(refreshTokenBodySchema), postLogout);
 router.post('/logout-all', requireAuth, postLogoutAll);
 router.get('/me', requireAuth, getMe);
 
