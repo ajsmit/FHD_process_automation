@@ -2,7 +2,8 @@ import test, { after, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
 import db from '../../db/knex';
-import { postProviderLogin } from '../../controllers/authController';
+import { postLogout, postProviderLogin } from '../../controllers/authController';
+import { issueSessionTokens, toTokenUser } from '../../auth/sessionService';
 import { initDb } from '../../db/initDb';
 import {
   getOrCreateAddCoSupervisor,
@@ -161,18 +162,40 @@ function makeProviderLoginReq(input: {
 }
 
 function makeResCapture(): Response & { statusCodeCaptured: number; bodyCaptured: unknown } {
-  return {
+  type CapturedResponse = Response & { statusCodeCaptured: number; bodyCaptured: unknown };
+  const capture = {
     statusCodeCaptured: 200,
     bodyCaptured: undefined as unknown,
-    status(code: number) {
+    status(this: CapturedResponse, code: number): CapturedResponse {
       this.statusCodeCaptured = code;
       return this;
     },
-    json(body: unknown) {
+    json(this: CapturedResponse, body: unknown): CapturedResponse {
       this.bodyCaptured = body;
       return this;
     },
-  } as unknown as Response & { statusCodeCaptured: number; bodyCaptured: unknown };
+  } as unknown as CapturedResponse;
+  return capture;
+}
+
+function makeLogoutReq(input: {
+  refreshToken: string;
+  user: NonNullable<Request['authUser']>;
+  ip?: string;
+}): Request {
+  return {
+    body: { refreshToken: input.refreshToken },
+    authUser: input.user,
+    ip: input.ip ?? '127.0.0.1',
+    method: 'POST',
+    originalUrl: '/api/v1/auth/logout',
+    get(name: string): string | undefined {
+      if (name.toLowerCase() === 'user-agent') {
+        return 'node-test';
+      }
+      return undefined;
+    },
+  } as unknown as Request;
 }
 
 async function createFixtureCase(): Promise<{ caseId: number; studentActor: Actor }> {
@@ -612,4 +635,64 @@ test('provider-login fails from untrusted source IP', async () => {
       assert.equal(res.statusCodeCaptured, 401);
     },
   );
+});
+
+test('logout revokes refresh token owned by authenticated user', async () => {
+  const user = await db('users')
+    .where({ sasi_id: 'STAFF-003' })
+    .first('id', 'sasi_id', 'first_name', 'last_name', 'role');
+  assert.ok(user, 'expected seeded user');
+
+  const tokens = await issueSessionTokens(toTokenUser(user), { ipAddress: '127.0.0.1', userAgent: 'node-test' });
+  const req = makeLogoutReq({
+    refreshToken: tokens.refreshToken,
+    user: {
+      id: user.id,
+      sasiId: user.sasi_id,
+      role: user.role,
+      firstName: user.first_name,
+      lastName: user.last_name,
+    },
+  });
+  const res = makeResCapture();
+  await postLogout(req, res);
+  assert.equal(res.statusCodeCaptured, 200);
+
+  const tokenRow = await db('auth_refresh_tokens')
+    .where({ user_id: user.id })
+    .whereNotNull('revoked_at')
+    .orderBy('id', 'desc')
+    .first('revoked_reason');
+  assert.equal(tokenRow?.revoked_reason, 'logout');
+});
+
+test('logout rejects refresh token not owned by authenticated user', async () => {
+  const tokenOwner = await db('users')
+    .where({ sasi_id: 'STAFF-003' })
+    .first('id', 'sasi_id', 'first_name', 'last_name', 'role');
+  const requester = await db('users')
+    .where({ sasi_id: 'STAFF-004' })
+    .first('id', 'sasi_id', 'first_name', 'last_name', 'role');
+  assert.ok(tokenOwner && requester, 'expected seeded users');
+
+  const tokens = await issueSessionTokens(toTokenUser(tokenOwner), { ipAddress: '127.0.0.1', userAgent: 'node-test' });
+  const req = makeLogoutReq({
+    refreshToken: tokens.refreshToken,
+    user: {
+      id: requester.id,
+      sasiId: requester.sasi_id,
+      role: requester.role,
+      firstName: requester.first_name,
+      lastName: requester.last_name,
+    },
+  });
+  const res = makeResCapture();
+  await postLogout(req, res);
+  assert.equal(res.statusCodeCaptured, 401);
+
+  const tokenRow = await db('auth_refresh_tokens')
+    .where({ user_id: tokenOwner.id })
+    .orderBy('id', 'desc')
+    .first('revoked_at');
+  assert.equal(tokenRow?.revoked_at, null);
 });

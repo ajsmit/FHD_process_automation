@@ -342,6 +342,6 @@ Token security requirements:
 | Audit logging for unauthorized attempts | **Deployed** (`auth_audit_events` + auth/authorization middleware/controller events) | AD-004 |
 | External invite token hardening (hash storage, single-use) | **Deployed (baseline)** (hash-validated token lookup + encrypted token at rest + single-use completion state) | AD-004 |
 | CORS production lock-down | **Partial** (environment allowlist `CORS_ALLOWED_ORIGINS` enforced; production policy hardening still required) | AD-004 |
-| Rate limiting on auth endpoints | **Deployed (baseline)** (`/auth/dev-login`, `/auth/login`, `/auth/refresh` rate-limited via `AUTH_RATE_LIMIT_WINDOW_MS` + `AUTH_RATE_LIMIT_MAX_REQUESTS`) | AD-004 |
+| Rate limiting on auth endpoints | **Deployed (baseline)** (`/auth/dev-login`, `/auth/login`, `/auth/provider-login`, `/auth/refresh` rate-limited via `AUTH_RATE_LIMIT_WINDOW_MS` + `AUTH_RATE_LIMIT_MAX_REQUESTS`) | AD-004 |
 
 All items above are required before production deployment. The current dev-login flow (`/auth/dev-login`) must not reach production.

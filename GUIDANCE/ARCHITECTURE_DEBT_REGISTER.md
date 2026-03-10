@@ -237,6 +237,13 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - constrained local password endpoint to local mode: `POST /api/v1/auth/login` returns `404` when provider mode is `trusted_header`.
 - synchronized env templates and runbook docs with provider-mode controls and header/secret configuration keys.
 - AD-004 remains In Progress pending enterprise IdP/proxy rollout hardening and final role-assignment governance lifecycle.
+33. AD-004 progress update on 2026-03-10 (logout token-ownership enforcement tranche):
+- tightened `POST /api/v1/auth/logout` to revoke refresh tokens only when the token belongs to the authenticated user (`server/src/controllers/authController.ts`, `server/src/auth/sessionService.ts`).
+- added explicit auth-audit event `logout_failed_token_not_owned_or_invalid` for mismatched/invalid logout token attempts.
+- expanded auth regression coverage with logout ownership tests (`server/src/services/workflow/changeRequestModulesService.test.ts`) for:
+  - valid self-owned token logout success,
+  - cross-user token logout rejection.
+- AD-004 remains In Progress pending enterprise IdP/proxy rollout hardening and final role-assignment governance lifecycle.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

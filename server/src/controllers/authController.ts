@@ -11,7 +11,7 @@ import {
 import {
   issueSessionTokens,
   revokeAllUserRefreshTokens,
-  revokeRefreshToken,
+  revokeRefreshTokenForUser,
   rotateRefreshToken,
   toTokenUser,
 } from '../auth/sessionService';
@@ -351,17 +351,34 @@ export async function postRefresh(req: Request, res: Response): Promise<void> {
 }
 
 export async function postLogout(req: Request, res: Response): Promise<void> {
+  if (!req.authUser) {
+    res.status(401).json({ message: 'Authentication required.' });
+    return;
+  }
   try {
     const refreshToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
     if (!refreshToken) {
       res.status(400).json({ message: 'refreshToken is required.' });
       return;
     }
-    await revokeRefreshToken(refreshToken, 'logout');
+    const revoked = await revokeRefreshTokenForUser(refreshToken, req.authUser.id, 'logout');
+    if (!revoked) {
+      await logAuthAuditEvent({
+        eventType: 'logout_failed_token_not_owned_or_invalid',
+        userId: req.authUser.id,
+        actorSasiId: req.authUser.sasiId,
+        route: req.originalUrl,
+        method: req.method,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent') ?? '',
+      });
+      res.status(401).json({ message: 'Invalid refresh token.' });
+      return;
+    }
     await logAuthAuditEvent({
       eventType: 'logout_success',
-      userId: req.authUser?.id,
-      actorSasiId: req.authUser?.sasiId,
+      userId: req.authUser.id,
+      actorSasiId: req.authUser.sasiId,
       route: req.originalUrl,
       method: req.method,
       ipAddress: req.ip,

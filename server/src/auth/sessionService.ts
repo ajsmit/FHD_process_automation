@@ -197,6 +197,19 @@ export async function revokeRefreshToken(rawRefreshToken: string, reason: string
     });
 }
 
+export async function revokeRefreshTokenForUser(rawRefreshToken: string, userId: number, reason: string): Promise<boolean> {
+  const tokenHash = hashRefreshToken(rawRefreshToken.trim());
+  const now = new Date().toISOString();
+  const updated = await db('auth_refresh_tokens')
+    .where({ token_hash: tokenHash, user_id: userId, revoked_at: null })
+    .update({
+      revoked_at: now,
+      revoked_reason: reason,
+      last_used_at: now,
+    });
+  return Number(updated) > 0;
+}
+
 export async function revokeAllUserRefreshTokens(userId: number, reason: string): Promise<void> {
   const now = new Date().toISOString();
   await db('auth_refresh_tokens')
