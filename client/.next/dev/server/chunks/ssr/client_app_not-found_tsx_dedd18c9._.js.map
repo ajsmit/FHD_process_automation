@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/ajsmit/Documents/FHD_process_automation/client/app/not-found.tsx"],"sourcesContent":["export default function NotFound() {\n  return <div style={{ padding: 24 }}>Not found</div>;\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBAAO,8OAAC;QAAI,OAAO;YAAE,SAAS;QAAG;kBAAG;;;;;;AACtC"}}]
-}

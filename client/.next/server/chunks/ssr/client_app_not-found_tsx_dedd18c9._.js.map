@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../../../client/app/not-found.tsx"],"sourcesContent":["export default function NotFound() {\n  return <div style={{ padding: 24 }}>Not found</div>;\n}\n"],"names":[],"mappings":"uDAAe,SAAS,IACtB,MAAO,CAAA,EAAA,EAAA,GAAA,EAAC,MAAA,CAAI,MAAO,CAAE,QAAS,EAAG,WAAG,aACtC"}
