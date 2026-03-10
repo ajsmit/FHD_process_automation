@@ -1,6 +1,6 @@
 # Workflow Orchestration Runbook
 
-Version: 2026-03-09
+Version: 2026-03-10
 Status: Active
 Scope: Practical orchestration of design, policy, engineering, and rollout for module delivery.
 
@@ -25,6 +25,12 @@ Provide one operational playbook for how work moves from policy intent to implem
 8. Execute `REGRESSION_CHECKLIST.md`.
 9. Update guidance docs and changelog notes.
 
+## 3.1 Database Migration Run Order (Mandatory)
+1. Apply schema migrations first: `npm run db:migrate --workspace=server`.
+2. Start server/bootstrap only after migrations are current.
+3. Keep `initDb.ts` orchestration-only (migration execution + seed wiring); do not place new canonical schema changes there.
+4. Use `ENABLE_DEMO_DATA=true` only when demo seed data is intentionally required.
+
 ## 4. Change Classes And Required Artifacts
 1. Policy change:
 - update `POLICY_RULEBOOK.md`,
@@ -48,6 +54,9 @@ Provide one operational playbook for how work moves from policy intent to implem
 1. Policy gate: no conflict with rulebook.
 2. Mapping gate: canonical keys and labels aligned across API/UI/PDF.
 3. Technical gate: no broken route/table assumptions.
+  - repository hygiene check passes (`./scripts/check-generated-artifacts.sh`).
+  - migration run-order contract is respected (`db:migrate` before module/route validation).
+  - OpenAPI contract is synchronized (`./scripts/check-openapi-contract.sh`).
 4. UX gate: UI cues and conditional behavior remain coherent.
 5. Regression gate: checklist passes for save/prefill/route/PDF/invite flows.
 6. Documentation gate: owning docs updated and cross-references intact.

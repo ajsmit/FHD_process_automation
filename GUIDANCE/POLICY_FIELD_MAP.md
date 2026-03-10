@@ -245,15 +245,31 @@ Use this as:
 | Arbiter CV received | arb.cv.received | WORKFLOW | user | editable | present | must be `Yes` | approval dossier |
 | Conflict disclosure | arb.conflict.disclosure | WORKFLOW | user | editable | present | required (explicit none allowed) | approval dossier |
 
+### 5.6 Change-request module implementation note (current)
+For `CHANGE_TITLE`, `CHANGE_SUPERVISOR`, and `ADD_CO_SUPERVISOR`:
+1. Canonical payloads are now persisted to dedicated module tables (`change_title_forms`, `change_supervisor_forms`, `add_co_supervisor_forms`) with status/completion/PDF metadata.
+2. Submit gates enforce module-specific validation:
+- `CHANGE_TITLE`: proposed title required, must differ from current title, and rationale minimum quality check.
+- `CHANGE_SUPERVISOR`: role-to-change required, incoming/outgoing must differ, continuity plan minimum quality check.
+- `ADD_CO_SUPERVISOR`: proposed co-supervisor must not duplicate existing co-supervisor entries.
+3. On final approval, canonical ROTT payload is synchronised:
+- `CHANGE_TITLE` writes approved title to `research.title` (`ROTT: Thesis title`).
+- `CHANGE_SUPERVISOR` writes approved role replacement into `supervision.*` roster fields.
+- `ADD_CO_SUPERVISOR` writes approved additional co-supervisor into available `supervision.co1/co2` slot.
+4. Printable PDFs are generated from persisted module payloads (not transient UI state).
+
+### 5.7 Phase-B lifecycle implementation note (current)
+For `ITS`, `APPOINT_EXAMINERS`, `CHANGE_EXAMINERS`, `EXAMINER_SUMMARY_CV`, and `APPOINT_ARBITER`:
+1. Canonical payloads are now persisted to module-specific tables (`*_forms`) with status and completion metadata.
+2. Role-scoped review transitions are implemented server-side with actor-to-case authorization checks.
+3. Printable PDFs for each module are generated from persisted canonical payloads (not UI state), using ROTT-aligned layout conventions.
+
 ## 6. Remaining Forms: Starter Field Map Stubs (Dependency-Focused)
 
 These stubs define upstream prefill obligations and minimum canonical outputs. Detailed label maps to be expanded from templates.
 
 | module | reads_from (required) | writes_to (canonical) | critical propagated outputs |
 |---|---|---|---|
-| CHANGE_TITLE | TITLE_REGISTRATION, prior approved title state | research.title (new version), change rationale | updates all downstream title-prefilled modules |
-| CHANGE_SUPERVISOR | TITLE_REGISTRATION, profile readiness | supervision.roster (new version) | triggers/updates profile requirements |
-| ADD_CO_SUPERVISOR | TITLE_REGISTRATION, profile readiness | supervision.roster.co additions | activates new co-supervisor profile and signature paths |
 | CHANGE_EXAMINERS | APPOINT_EXAMINERS active panel | exam.panel version update | refreshes EXAMINER_SUMMARY_CV + arbitration context |
 | APPOINT_ARBITER | APPOINT_EXAMINERS/CHANGE_EXAMINERS | exam.arbiter assignment | arbitration pathway evidence |
 | EXAMINER_SUMMARY_CV | APPOINT_EXAMINERS or CHANGE_EXAMINERS | exam.cv_pack metadata | senate/faculty examiner evidence packet |

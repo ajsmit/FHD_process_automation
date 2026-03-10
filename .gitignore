@@ -6,6 +6,12 @@
 /dist
 /build
 /out
+/client/.next
+/client/.next_backup*
+/server/dist
+/server/dev.sqlite3
+/GUIDANCE/*.html
+/GUIDANCE/*_files/
 
 # Logs
 logs

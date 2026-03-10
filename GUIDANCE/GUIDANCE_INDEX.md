@@ -8,6 +8,7 @@ Purpose: Keep GUIDANCE docs mutually supporting, non-redundant, and easy to main
 1. `GUIDANCE/` is the canonical documentation set for project policy/architecture/planning.
 2. Parallel documentation trees (for example a separate `docs/` mirror) are not permitted.
 3. If auxiliary notes are needed, they must be linked from this index and must not duplicate owner-document content.
+4. Markdown (`.md`) files are canonical/editable guidance sources; HTML exports in `GUIDANCE/` are generated artifacts and must not be tracked in git.
 
 ## 1. Source-Of-Truth Allocation
 1. `POLICY_RULEBOOK.md`
