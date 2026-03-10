@@ -7,6 +7,8 @@ import path from 'path';
 import api from './api/v1';
 import { validateAuthStartupGuardrails } from './auth/startupAuthGuardrails';
 import { initDb } from './db/initDb';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { logger } from './logging/logger';
 
 // Load environment variables
 dotenv.config({ path: process.cwd() + '/.env' });
@@ -47,7 +49,7 @@ function resolveAllowedCorsOrigins(): Set<string> {
 
 const allowedCorsOrigins = resolveAllowedCorsOrigins();
 if (isProduction && allowedCorsOrigins.size === 0) {
-  console.warn('CORS_ALLOWED_ORIGINS is empty in production; browser-origin requests will be rejected.');
+  logger.warn('CORS_ALLOWED_ORIGINS is empty in production; browser-origin requests will be rejected.');
 }
 
 // Middleware
@@ -86,6 +88,8 @@ app.get('/', (req, res) => {
   res.json({ status: 'API_UP', message: 'Use Next.js client on port 3000 and API on /api/v1' });
 });
 
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Start the server
 async function start() {
@@ -94,14 +98,14 @@ async function start() {
   if (shouldInitDb) {
     await initDb();
   } else {
-    console.log('AUTO_INIT_DB=false: skipping automatic schema/data bootstrap.');
+    logger.info('AUTO_INIT_DB=false: skipping automatic schema/data bootstrap.');
   }
   app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    logger.info(`Server is running on http://localhost:${port}`);
   });
 }
 
 start().catch((error) => {
-  console.error('Failed to initialize server:', error);
+  logger.error('Failed to initialize server', { error });
   process.exit(1);
 });

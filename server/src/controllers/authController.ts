@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import db from '../db/knex';
 import { logAuthAuditEvent } from '../auth/auditLogService';
 import { hashPassword, verifyPassword } from '../auth/passwordService';
@@ -16,6 +16,10 @@ import {
   toTokenUser,
 } from '../auth/sessionService';
 import type { Role } from '../auth/tokenService';
+import {
+  AuthenticationError,
+  toAppError,
+} from '../errors/httpErrors';
 
 interface UserRow {
   id: number;
@@ -27,6 +31,16 @@ interface UserRow {
   role: Role;
   password_hash?: string | null;
   active?: number | boolean | null;
+}
+
+function sendFallbackErrorResponse(
+  res: Response,
+  error: unknown,
+  fallback: { statusCode: number; code: string; message: string },
+): void {
+  const appError = toAppError(error, fallback);
+  const message = appError.exposeMessage ? appError.message : fallback.message;
+  res.status(appError.statusCode).json({ message, code: appError.code, details: appError.details });
 }
 
 function isActiveUser(value: UserRow['active']): boolean {
@@ -108,7 +122,7 @@ function devAuthEnabled(): boolean {
   return env === 'true';
 }
 
-export async function postDevLogin(req: Request, res: Response): Promise<void> {
+export async function postDevLogin(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (!devAuthEnabled()) {
     await logAuthAuditEvent({
       eventType: 'dev_login_disabled_attempt',
@@ -160,11 +174,15 @@ export async function postDevLogin(req: Request, res: Response): Promise<void> {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Dev login failed' });
+    if (next) {
+      next(toAppError(error, { statusCode: 500, code: 'auth_dev_login_failed', message: 'Dev login failed.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 500, code: 'auth_dev_login_failed', message: 'Dev login failed.' });
   }
 }
 
-export async function postLogin(req: Request, res: Response): Promise<void> {
+export async function postLogin(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (resolveAuthProvider() !== 'local_password') {
     res.status(404).json({ message: 'Not found.' });
     return;
@@ -261,11 +279,15 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Login failed' });
+    if (next) {
+      next(toAppError(error, { statusCode: 500, code: 'auth_login_failed', message: 'Login failed.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 500, code: 'auth_login_failed', message: 'Login failed.' });
   }
 }
 
-export async function postProviderLogin(req: Request, res: Response): Promise<void> {
+export async function postProviderLogin(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (resolveAuthProvider() !== 'trusted_header') {
     res.status(404).json({ message: 'Not found.' });
     return;
@@ -367,11 +389,15 @@ export async function postProviderLogin(req: Request, res: Response): Promise<vo
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Provider login failed' });
+    if (next) {
+      next(toAppError(error, { statusCode: 500, code: 'auth_provider_login_failed', message: 'Provider login failed.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 500, code: 'auth_provider_login_failed', message: 'Provider login failed.' });
   }
 }
 
-export async function postRefresh(req: Request, res: Response): Promise<void> {
+export async function postRefresh(req: Request, res: Response, next?: NextFunction): Promise<void> {
   try {
     const refreshToken = typeof req.body?.refreshToken === 'string' ? req.body.refreshToken.trim() : '';
     if (!refreshToken) {
@@ -406,13 +432,21 @@ export async function postRefresh(req: Request, res: Response): Promise<void> {
       userAgent: req.get('user-agent') ?? '',
       details: { reason: error instanceof Error ? error.message : 'unknown' },
     });
-    res.status(401).json({ message: 'Invalid or expired refresh token.' });
+    if (next) {
+      next(toAppError(error, { statusCode: 401, code: 'auth_refresh_failed', message: 'Invalid or expired refresh token.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 401, code: 'auth_refresh_failed', message: 'Invalid or expired refresh token.' });
   }
 }
 
-export async function postLogout(req: Request, res: Response): Promise<void> {
+export async function postLogout(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (!req.authUser) {
-    res.status(401).json({ message: 'Authentication required.' });
+    if (next) {
+      next(new AuthenticationError('Authentication required.'));
+      return;
+    }
+    res.status(401).json({ message: 'Authentication required.', code: 'authentication_error', details: {} });
     return;
   }
   try {
@@ -446,13 +480,21 @@ export async function postLogout(req: Request, res: Response): Promise<void> {
     });
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Logout failed' });
+    if (next) {
+      next(toAppError(error, { statusCode: 500, code: 'auth_logout_failed', message: 'Logout failed.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 500, code: 'auth_logout_failed', message: 'Logout failed.' });
   }
 }
 
-export async function postLogoutAll(req: Request, res: Response): Promise<void> {
+export async function postLogoutAll(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (!req.authUser) {
-    res.status(401).json({ message: 'Authentication required.' });
+    if (next) {
+      next(new AuthenticationError('Authentication required.'));
+      return;
+    }
+    res.status(401).json({ message: 'Authentication required.', code: 'authentication_error', details: {} });
     return;
   }
   try {
@@ -468,13 +510,21 @@ export async function postLogoutAll(req: Request, res: Response): Promise<void> 
     });
     res.status(200).json({ success: true });
   } catch (error) {
-    res.status(500).json({ message: error instanceof Error ? error.message : 'Logout all failed' });
+    if (next) {
+      next(toAppError(error, { statusCode: 500, code: 'auth_logout_all_failed', message: 'Logout all failed.' }));
+      return;
+    }
+    sendFallbackErrorResponse(res, error, { statusCode: 500, code: 'auth_logout_all_failed', message: 'Logout all failed.' });
   }
 }
 
-export async function getMe(req: Request, res: Response): Promise<void> {
+export async function getMe(req: Request, res: Response, next?: NextFunction): Promise<void> {
   if (!req.authUser) {
-    res.status(401).json({ message: 'Authentication required.' });
+    if (next) {
+      next(new AuthenticationError('Authentication required.'));
+      return;
+    }
+    res.status(401).json({ message: 'Authentication required.', code: 'authentication_error', details: {} });
     return;
   }
   res.status(200).json({ user: req.authUser });
