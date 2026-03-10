@@ -352,7 +352,12 @@ Legacy 410 endpoint sunset timeline:
 - Until removal, default behavior remains `410 Gone` when `ENABLE_LEGACY_PHASE1=false`.
 
 ## 6. Service Architecture (Current)
-- `server/src/services/titleRegistrationWorkflowService.ts` remains the main composition service for active ROTT/MOU/profile operations.
+- `server/src/services/titleRegistrationWorkflowService.ts` is a thin composition façade preserving legacy call contracts.
+- Core ROTT orchestration is implemented in:
+  - `server/src/services/rottCaseService.ts`
+- Bounded domain services are implemented in:
+  - `server/src/services/supervisorProfileService.ts`
+  - `server/src/services/mouService.ts`
 - Operations/feed domain is extracted and active in:
   - `server/src/services/operationsFeedService.ts` (pipeline, tasks, to-do, people, notifications, external invite status views)
 - Workflow transition logic is extracted and active in:

@@ -13,7 +13,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 | AD-004 | Authentication/authorization coverage is partial: JWT + actor-to-case checks are active for transition routes, and key non-transition workflow endpoints are now protected, but full endpoint coverage and production-grade identity model are still incomplete. | High policy/compliance risk outside transition path. | Critical | In Progress | Extend identity-bound authz coverage across remaining endpoint surface and finalize production identity model per `AUTHORIZATION_MATRIX.md`. |
 | AD-005 | Legacy `phase1_workflows.intention_to_submit_status` schema state could conflict with canonical `INTENTION_TO_SUBMIT` module semantics. | Medium conceptual/model drift risk for future module implementation. | High | Closed | Removed `intention_to_submit_status` from legacy phase1 schema contract and bootstrap migration path; legacy ITS endpoints remain retired (`410`). |
 | AD-006 | Extracted workflow/PDF modules previously imported canonical TS types from `titleRegistrationWorkflowService.ts` (`FormData`, `MouFormData`, `TitleRegistrationCase`, `ReviewDecision`, `SupervisorProfileForm`). | Coupling back to monolith weakens extraction boundaries and increases refactor friction. | Medium | Closed | Shared contracts extracted to `server/src/services/contracts/titleRegistration.ts`; workflow/PDF/middleware/controller imports now resolve to contracts module. |
-| AD-007 | `titleRegistrationWorkflowService.ts` remains a large multi-domain orchestrator (ROTT, external invites, supervisor profiles, MOU, to-do feeds). | Residual low cohesion and elevated regression risk for unrelated changes. | High | In Progress | Split monolith into bounded services (`rottCaseService`, `supervisorProfileService`, `mouService`, `externalInviteService`, `operationsFeedService`) with a thin composition layer. |
+| AD-007 | `titleRegistrationWorkflowService.ts` remains a large multi-domain orchestrator (ROTT, external invites, supervisor profiles, MOU, to-do feeds). | Residual low cohesion and elevated regression risk for unrelated changes. | High | Closed | Split orchestration into bounded domain services (`rottCaseService`, `supervisorProfileService`, `mouService`, `externalAcademicOnboardingService`, `operationsFeedService`) and converted `titleRegistrationWorkflowService.ts` into a thin composition façade. |
 | AD-008 | No automated tests covered extracted transition logic (`workflow/titleRegistrationTransitions.ts`) or PDF renderers (`pdf-generation/*`). | Refactor safety risk; regressions likely to be detected late by manual QA only. | High | Closed | Added automated service-level tests for transition gates and PDF smoke generation, wired into `server` test script. |
 | AD-009 | Next-wave modules (`ITS`, `APPOINT_EXAMINERS`, `CHANGE_EXAMINERS`, `EXAMINER_SUMMARY_CV`, `APPOINT_ARBITER`) lacked role-scoped approval transitions and printable outputs. | Policy-to-implementation gap for departmental/faculty approval chain and module artifacts. | High | Closed | Implemented role-scoped module state machines (supervisor/dept/chair/faculty as applicable), server-side actor-to-case authorization checks, and ROTT-aligned printable PDF generation endpoints for all Phase-B modules. |
 | AD-010 | Client-side module DTO enums are duplicated from server contracts and can drift (example observed: `Role To Change` casing mismatch). | Medium correctness risk causing runtime branch misses or TypeScript inconsistencies across client/server. | Medium | In Progress | Introduce shared cross-workspace contract package or generated API schema/types to eliminate duplicated enum/string-literal contracts. |
@@ -336,6 +336,16 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - hardened ops feed enrichment in `server/src/services/operationsFeedService.ts` to return degraded rows when per-case enrichment fails instead of failing the entire pipeline response.
 - added resilience unit tests in `server/src/utils/resilience.test.ts`.
 - AD-025 marked Closed.
+43. AD-007 closure update on 2026-03-10 (service-boundary completion tranche):
+- moved primary orchestration implementation to `server/src/services/rottCaseService.ts`.
+- introduced bounded domain service entrypoints:
+  - `server/src/services/supervisorProfileService.ts`
+  - `server/src/services/mouService.ts`
+  - existing `server/src/services/externalAcademicOnboardingService.ts`
+  - existing `server/src/services/operationsFeedService.ts`
+- reduced `server/src/services/titleRegistrationWorkflowService.ts` to composition/facade wiring across bounded services, preserving controller/service call contracts.
+- verified with `npm run build --workspace=server` and `npm run test --workspace=server`.
+- AD-007 marked Closed.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

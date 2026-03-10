@@ -96,6 +96,10 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 - Post-AD-001 decomposition:
   - split remaining multi-domain orchestration into bounded services
   - operations/feed domain extracted to `server/src/services/operationsFeedService.ts`
+  - `titleRegistrationWorkflowService.ts` converted to thin composition façade with bounded service entrypoints:
+    - `server/src/services/rottCaseService.ts`
+    - `server/src/services/supervisorProfileService.ts`
+    - `server/src/services/mouService.ts`
 - Full authentication + identity-bound authorization enforcement on remaining unprotected endpoint surface
 - Phase-B next-wave modules baseline implementation:
   - `INTENTION_TO_SUBMIT`
@@ -178,4 +182,4 @@ Exit criteria:
 6. Completed 2026-03-10 (AD-016): expanded server coverage with controller smoke, middleware auth/validation, and API route smoke tests alongside existing service-level tests.
 7. Completed 2026-03-10 (AD-018): standardized controller error handling via centralized error classes/middleware and structured logging with unified `{ message, code, details }` responses.
 8. Address AD-010: eliminate client/server DTO drift via generated/shared API contracts.
-9. Complete post-AD-001 decomposition by splitting remaining `titleRegistrationWorkflowService.ts` bounded domains (ROTT case orchestration vs MOU vs profiles).
+9. Completed 2026-03-10 (AD-007): finalized service-boundary decomposition with `rottCaseService`, `mouService`, and `supervisorProfileService`, leaving `titleRegistrationWorkflowService.ts` as composition façade.
