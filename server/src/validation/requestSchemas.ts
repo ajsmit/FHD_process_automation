@@ -70,6 +70,10 @@ export const sasiSearchQuerySchema = z.object({
   message: 'Provide studentNumber or firstName/lastName query parameters.',
 });
 
+export const pipelineQuerySchema = z.object({
+  caseId: z.string().regex(/^\d+$/, { message: 'caseId must be a positive integer string.' }).optional(),
+});
+
 export const externalInviteCreateBodySchema = z.object({
   caseId: z.coerce.number().int().positive(),
   role: z.enum(['supervisor', 'admin', 'co1', 'co2']),
@@ -108,6 +112,11 @@ export const phase1TitleRegistrationBodySchema = z.object({
   studentNumber: nonEmptyString.max(64),
   proposedTitle: nonEmptyString.max(500),
   abstract: z.string().max(8000).optional(),
+});
+
+export const profileCvUploadBodySchema = z.object({
+  fileName: nonEmptyString.max(255),
+  contentBase64: nonEmptyString.max(25_000_000),
 });
 
 export const titleRegistrationCreateBodySchema = z.object({

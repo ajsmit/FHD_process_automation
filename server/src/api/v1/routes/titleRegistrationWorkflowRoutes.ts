@@ -85,7 +85,7 @@ import {
   triggerFacultyReminder,
 } from '../../../controllers/titleRegistrationWorkflowController';
 import { requireAuth } from '../../../middleware/auth';
-import { validateBody, validateParams } from '../../../middleware/requestValidation';
+import { validateBody, validateParams, validateQuery } from '../../../middleware/requestValidation';
 import { requireTransitionAuthorization } from '../../../middleware/transitionAuthorization';
 import {
   requireCaseOperationAuthorization,
@@ -97,7 +97,9 @@ import {
   commentsOnlyBodySchema,
   moduleReviewDecisionBodySchema,
   patchPayloadBodySchema,
+  pipelineQuerySchema,
   profileIdParamSchema,
+  profileCvUploadBodySchema,
   reviewDecisionBodySchema,
   studentNumberParamSchema,
 } from '../../../validation/requestSchemas';
@@ -115,7 +117,7 @@ router.post('/cases/:caseId/chairperson-sign', requireAuth, validateParams(caseI
 router.post('/cases/:caseId/dept-send-faculty', requireAuth, validateParams(caseIdParamSchema), requireTransitionAuthorization('dept_send_faculty'), sendToFacultyByDept);
 router.post('/cases/:caseId/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(reviewDecisionBodySchema), requireTransitionAuthorization('faculty_review'), reviewFaculty);
 router.post('/cases/:caseId/reminder', requireAuth, validateParams(caseIdParamSchema), requireTransitionAuthorization('reminder'), triggerFacultyReminder);
-router.get('/pipeline', requireAuth, requireCollectionOperationAuthorization(), getPipeline);
+router.get('/pipeline', requireAuth, validateQuery(pipelineQuerySchema), requireCollectionOperationAuthorization(), getPipeline);
 router.get('/tasks', requireAuth, requireCollectionOperationAuthorization(), getTasks);
 router.get('/to-do', requireAuth, requireCollectionOperationAuthorization(), getToDo);
 router.get('/people', requireAuth, requireCollectionOperationAuthorization(), getPeople);
@@ -124,7 +126,7 @@ router.get('/cases/:caseId/external-invites', requireAuth, validateParams(caseId
 router.get('/cases/:caseId/supervisor-profiles', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('supervisor_profiles_read'), getSupervisorProfiles);
 router.patch('/supervisor-profiles/:profileId', requireAuth, validateParams(profileIdParamSchema), validateBody(patchPayloadBodySchema), requireProfileOperationAuthorization('profile_edit'), patchSupervisorProfile);
 router.post('/supervisor-profiles/:profileId/submit', requireAuth, validateParams(profileIdParamSchema), requireProfileOperationAuthorization('profile_submit'), postSubmitSupervisorProfile);
-router.post('/supervisor-profiles/:profileId/upload-cv', requireAuth, validateParams(profileIdParamSchema), requireProfileOperationAuthorization('profile_upload_cv'), postUploadSupervisorProfileCv);
+router.post('/supervisor-profiles/:profileId/upload-cv', requireAuth, validateParams(profileIdParamSchema), validateBody(profileCvUploadBodySchema), requireProfileOperationAuthorization('profile_upload_cv'), postUploadSupervisorProfileCv);
 router.post('/cases/:caseId/supervisor-profiles/request', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('supervisor_profiles_request'), postRequestSupervisorProfiles);
 router.post('/cases/:caseId/supervisor-profiles/reminder', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('supervisor_profiles_reminder'), postSupervisorProfilesReminder);
 router.get('/cases/:caseId/mou', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('mou_read'), getMou);
