@@ -72,6 +72,11 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - `.md` declared canonical guidance source in index/spec contracts
   - tracked guidance export artifacts removed from git index (`GUIDANCE/*.html`, `GUIDANCE/*_files/**`)
   - guardrail extended to fail CI when generated guidance artifacts are tracked
+- AD-019 API-contract/versioning slice completed:
+  - added route-derived OpenAPI generator (`server/src/contracts/generateOpenApi.ts`) with canonical artifact `server/openapi/openapi.v1.json`
+  - wired `npm run openapi:generate --workspace=server` and root contract check `npm run check:openapi-contract`
+  - enforced contract drift check in CI (`scripts/check-openapi-contract.sh`)
+  - documented `/api/v1` versioning policy and legacy `410` sunset timeline in `PG_PLATFORM_TECH_SPEC.md`
 - AD-012 UI decomposition slice completed:
   - decomposed dashboard page/panels into bounded components and domain hooks (`page.tsx` reduced from 2411 to 446 lines)
   - split module panel monolith into `PhaseBModulePanels.tsx` + `ChangeRequestModulePanels.tsx`

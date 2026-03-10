@@ -327,6 +327,30 @@ Control:
 - runtime flag `ENABLE_LEGACY_PHASE1=false` (default) returns `410 Gone` for these legacy route families.
 - set `ENABLE_LEGACY_PHASE1=true` only for migration/compatibility windows.
 
+### 5.5 OpenAPI Contract, Versioning, And Sunset Policy (AD-019)
+- Canonical transport contract artifact: `server/openapi/openapi.v1.json`
+- Generation source: `server/src/contracts/generateOpenApi.ts` (derives from live route definitions).
+- Regenerate command:
+  - `npm run openapi:generate --workspace=server`
+- CI enforcement:
+  - `.github/workflows/main.yml` runs `./scripts/check-openapi-contract.sh`
+  - check fails if generated `server/openapi/openapi.v1.json` is out of sync with route definitions.
+
+Versioning policy:
+- `/api/v1` is the current stable major.
+- Breaking transport changes require one of:
+  - rollout under `/api/v2`, or
+  - explicit deprecation headers + documented migration window before behavior change.
+- Non-breaking additions in `/api/v1` are allowed when backward-compatible.
+
+Legacy 410 endpoint sunset timeline:
+- Scope:
+  - `/api/v1/phase1/*`
+  - `/api/v1/title-registrations/*`
+- Freeze date: **2026-03-31** (no new capabilities or schema expansion).
+- Hard removal target: **2026-06-30**.
+- Until removal, default behavior remains `410 Gone` when `ENABLE_LEGACY_PHASE1=false`.
+
 ## 6. Service Architecture (Current)
 - `server/src/services/titleRegistrationWorkflowService.ts` remains the main composition service for active ROTT/MOU/profile operations.
 - Operations/feed domain is extracted and active in:

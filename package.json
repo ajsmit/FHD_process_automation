@@ -15,7 +15,8 @@
     "build:server": "npm run build --workspace=server",
     "test:server": "npm run test --workspace=server",
     "start": "npm start --workspace=server",
-    "check:dashboard-size": "./scripts/check-dashboard-sizes.sh"
+    "check:dashboard-size": "./scripts/check-dashboard-sizes.sh",
+    "check:openapi-contract": "./scripts/check-openapi-contract.sh"
   },
   "keywords": [],
   "author": "",

@@ -52,6 +52,17 @@ A monorepo for postgraduate workflow automation.
 npm run test:server
 ```
 
+## OpenAPI Contract (AD-019)
+Generate the API contract artifact:
+```bash
+npm run openapi:generate --workspace=server
+```
+
+Verify generated contract is committed and in sync:
+```bash
+npm run check:openapi-contract
+```
+
 ## Troubleshooting (Blank/Spinning Page)
 If `http://localhost:3000` spins forever or commands fail with `EADDRINUSE`, old Node processes are still holding ports.
 If clicking `Check SASI` fails, the API is not reachable (server not running, wrong `NEXT_PUBLIC_API_BASE`, or no reverse proxy route for `/api/v1`).
