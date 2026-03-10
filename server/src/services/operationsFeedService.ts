@@ -1,4 +1,5 @@
 import db from '../db/knex';
+import { decryptInviteToken } from '../auth/inviteTokenService';
 import type { MouFormRecord, SupervisorProfileForm } from './contracts/titleRegistration';
 
 export async function listPipelineItems(): Promise<Array<Record<string, unknown>>> {
@@ -84,6 +85,19 @@ export async function listExternalInviteItems(caseId: number): Promise<Array<Rec
       deliveryStatus = 'failed';
     }
 
+    const tokenHash = String(invite.token_hash ?? '').trim();
+    const tokenCiphertext = String(invite.token_ciphertext ?? '').trim();
+    let rawToken = '';
+    if (tokenCiphertext) {
+      try {
+        rawToken = decryptInviteToken(tokenCiphertext);
+      } catch {
+        rawToken = '';
+      }
+    } else if (!tokenHash) {
+      rawToken = String(invite.token ?? '');
+    }
+
     rows.push({
       role: String(invite.role ?? ''),
       email,
@@ -91,7 +105,7 @@ export async function listExternalInviteItems(caseId: number): Promise<Array<Rec
       expiresAt: invite.expires_at ?? null,
       completedAt: invite.completed_at ?? null,
       updatedAt: invite.updated_at ?? null,
-      inviteLink: `${appBase}/external-academic/${String(invite.token ?? '')}`,
+      inviteLink: rawToken ? `${appBase}/external-academic/${rawToken}` : '',
       deliveryStatus,
       externalAcademicId: invite.external_academic_id ?? null,
     });

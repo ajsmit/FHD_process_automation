@@ -1,5 +1,10 @@
-import { randomUUID } from 'crypto';
 import db from '../db/knex';
+import {
+  decryptInviteToken,
+  encryptInviteToken,
+  generateInviteToken,
+  hashInviteToken,
+} from '../auth/inviteTokenService';
 import { updateForm } from './titleRegistrationWorkflowService';
 import type { FormData } from './contracts/titleRegistration';
 import { sendEmail } from './emailService';
@@ -13,6 +18,8 @@ interface InviteRow {
   role: InviteRole;
   email: string;
   token: string;
+  token_hash?: string | null;
+  token_ciphertext?: string | null;
   status: 'pending' | 'completed' | 'expired';
   expires_at: string | null;
   completed_at: string | null;
@@ -115,6 +122,39 @@ function parseCaseFormData(raw: unknown): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+async function findInviteByPresentedToken(token: string): Promise<InviteRow | undefined> {
+  const tokenHash = hashInviteToken(token);
+  const invite = await db<InviteRow>('external_academic_profile_invites')
+    .where({ token_hash: tokenHash })
+    .first();
+  if (invite) {
+    return invite;
+  }
+  // Backward compatibility for legacy rows that still stored raw token.
+  return db<InviteRow>('external_academic_profile_invites')
+    .where({ token })
+    .first();
+}
+
+function resolveStoredInviteToken(invite: InviteRow): string | null {
+  const encrypted = clean(invite.token_ciphertext ?? '');
+  if (encrypted) {
+    try {
+      return decryptInviteToken(encrypted);
+    } catch {
+      return null;
+    }
+  }
+
+  const legacyToken = clean(invite.token);
+  const hasHash = clean(invite.token_hash ?? '');
+  // If the token column carries only hash material, no raw token is available.
+  if (hasHash && legacyToken === hasHash) {
+    return null;
+  }
+  return legacyToken || null;
 }
 
 function deriveThesisType(formData: Record<string, unknown>): string {
@@ -238,14 +278,18 @@ export async function createExternalAcademicInvite(caseId: number, roleInput: st
     throw new Error('Title registration case not found for invite request.');
   }
 
-  const token = randomUUID().replace(/-/g, '');
+  const token = generateInviteToken();
+  const tokenHash = hashInviteToken(token);
+  const tokenCiphertext = encryptInviteToken(token);
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
   const [inviteId] = await db('external_academic_profile_invites').insert({
     case_id: caseId,
     role: roleInput,
     email,
-    token,
+    token: tokenHash,
+    token_hash: tokenHash,
+    token_ciphertext: tokenCiphertext,
     status: 'pending',
     expires_at: expiresAt.toISOString(),
   });
@@ -301,7 +345,7 @@ export async function getExternalAcademicInvite(tokenInput: string): Promise<{
   inviteeSurname: string;
 }> {
   const token = clean(tokenInput);
-  const invite = await db<InviteRow>('external_academic_profile_invites').where({ token }).first();
+  const invite = await findInviteByPresentedToken(token);
   if (!invite) {
     throw new Error('Invite link not found.');
   }
@@ -312,6 +356,15 @@ export async function getExternalAcademicInvite(tokenInput: string): Promise<{
     await db('external_academic_profile_invites').where({ id: invite.id }).update({ status: 'expired', updated_at: db.fn.now() });
     throw new Error('This invite link has expired.');
   }
+
+  const inviteHash = hashInviteToken(token);
+  const inviteCiphertext = encryptInviteToken(token);
+  await db('external_academic_profile_invites').where({ id: invite.id }).update({
+    token: inviteHash,
+    token_hash: inviteHash,
+    token_ciphertext: inviteCiphertext,
+    updated_at: db.fn.now(),
+  });
 
   let studentName = 'Student';
   let thesisType = 'Not specified';
@@ -357,7 +410,7 @@ export async function getExternalAcademicInvite(tokenInput: string): Promise<{
 
 export async function completeExternalAcademicInvite(tokenInput: string, payloadInput: ExternalAcademicInput): Promise<{ externalAcademicId: number; caseUpdated: boolean }> {
   const token = clean(tokenInput);
-  const invite = await db<InviteRow>('external_academic_profile_invites').where({ token }).first();
+  const invite = await findInviteByPresentedToken(token);
   if (!invite) {
     throw new Error('Invite link not found.');
   }
@@ -368,6 +421,15 @@ export async function completeExternalAcademicInvite(tokenInput: string, payload
     await db('external_academic_profile_invites').where({ id: invite.id }).update({ status: 'expired', updated_at: db.fn.now() });
     throw new Error('This invite link has expired.');
   }
+
+  const inviteHash = hashInviteToken(token);
+  const inviteCiphertext = encryptInviteToken(token);
+  await db('external_academic_profile_invites').where({ id: invite.id }).update({
+    token: inviteHash,
+    token_hash: inviteHash,
+    token_ciphertext: inviteCiphertext,
+    updated_at: db.fn.now(),
+  });
 
   const payload: ExternalAcademicInput = {
     ...payloadInput,

@@ -218,6 +218,17 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - aligned seeded demo users with explicit `staff_number` + `departments` scope fields in `server/src/db/seedDemoData.ts`.
 - expanded password login identifier matching to include `staff_number` in addition to `sasi_id` and `email` (`server/src/controllers/authController.ts`).
 - AD-004 remains In Progress pending production identity provider integration and final role-assignment governance lifecycle.
+31. AD-004 progress update on 2026-03-10 (external invite token hardening tranche):
+- added migration `server/src/db/migrations/20260310235500_harden_external_invite_tokens.ts` with invite-token security columns:
+  - `external_academic_profile_invites.token_hash` (lookup key; unique index)
+  - `external_academic_profile_invites.token_ciphertext` (encrypted token at rest)
+- introduced `server/src/auth/inviteTokenService.ts` for invite token generation, hashing, and AES-GCM encryption/decryption.
+- updated invite onboarding flow (`server/src/services/externalAcademicOnboardingService.ts`) to:
+  - persist hash + ciphertext for new invites,
+  - validate public invite access by token hash with backward-compatible legacy-token fallback,
+  - retain single-use completion semantics (`status=completed`) and expiry handling.
+- updated invite status feed (`server/src/services/operationsFeedService.ts`) to build invite links from decrypted ciphertext for hardened rows.
+- AD-004 remains In Progress pending production identity provider integration and final role-assignment governance lifecycle.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.

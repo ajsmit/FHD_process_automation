@@ -144,6 +144,7 @@ Server (`server/.env`):
 - `SASI_PROVIDER`, `SASI_API_ENDPOINT`, `SASI_API_KEY`
 - `AUTO_INIT_DB`, `ENABLE_DEMO_DATA`, `ENABLE_DEV_AUTH`, `ENABLE_LEGACY_PHASE1`
 - `EXTERNAL_PROFILE_BASE_URL`
+- `EXTERNAL_INVITE_TOKEN_ENCRYPTION_KEY` (required in production; 32-byte base64 or 64-char hex)
 - `JWT_SECRET`, `JWT_EXPIRES_IN`
 - `REFRESH_TOKEN_TTL_DAYS`, `DEMO_USER_PASSWORD`
 - `AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`, `CORS_ALLOWED_ORIGINS`
@@ -208,4 +209,5 @@ See `PROJECT_IMPLEMENTATION_PLAN.md` for phased scope.
   - faculty reviewer: `STAFF-004`
   - chairperson: `STAFF-005`
 - Auth attempts are rate-limited by `AUTH_RATE_LIMIT_WINDOW_MS` and `AUTH_RATE_LIMIT_MAX_REQUESTS`.
+- External invite tokens are validated by hash and encrypted at rest.
 - Legacy route families are disabled by default (`ENABLE_LEGACY_PHASE1=false`) and return `410`.
