@@ -39,3 +39,18 @@ export function validateParams(schema: UnknownSchema): RequestHandler {
     next();
   };
 }
+
+export function validateQuery(schema: UnknownSchema): RequestHandler {
+  return (req, res, next) => {
+    const parsed = schema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({
+        message: 'Invalid query parameters.',
+        issues: issuesFromError(parsed.error),
+      });
+      return;
+    }
+    req.query = parsed.data as unknown as typeof req.query;
+    next();
+  };
+}

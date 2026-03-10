@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { validateBody, validateParams } from './requestValidation';
+import { validateBody, validateParams, validateQuery } from './requestValidation';
 
 function makeResCapture(): Response & { statusCodeCaptured: number; bodyCaptured: unknown } {
   type CapturedResponse = Response & { statusCodeCaptured: number; bodyCaptured: unknown };
@@ -63,3 +63,16 @@ test('validateParams returns 400 on invalid route params', () => {
   assert.equal((res.bodyCaptured as { message: string }).message, 'Invalid route parameters.');
 });
 
+test('validateQuery returns 400 on invalid query parameters', () => {
+  const middleware = validateQuery(z.object({ internalOnly: z.enum(['true', 'false']).optional() }));
+  const req = { query: { internalOnly: 'yes' } } as unknown as Request;
+  const res = makeResCapture();
+  let nextCalled = false;
+  const next: NextFunction = () => { nextCalled = true; };
+
+  middleware(req, res, next);
+
+  assert.equal(nextCalled, false);
+  assert.equal(res.statusCodeCaptured, 400);
+  assert.equal((res.bodyCaptured as { message: string }).message, 'Invalid query parameters.');
+});
