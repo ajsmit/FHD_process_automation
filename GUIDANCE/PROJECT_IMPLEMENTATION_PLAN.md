@@ -86,9 +86,12 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - extracted shared panel helpers (`workflowModulePanelTypes.ts`, `moduleFieldRenderers.tsx`, `moduleActionButtons.tsx`)
   - refactored module loading to `moduleLoaders` dispatch map in `useDashboardOrchestration.ts`
   - enforced CI size guardrails for page/hook/panel/helper files (`scripts/check-dashboard-sizes.sh`)
+- Supervisor-role refactor pass completed:
+  - refactored remaining role-branch review routing in `useDashboardPhaseBModules.ts` to role-handler maps for symmetric supervisor/dept/chair/faculty dispatch.
+  - refactored external academic role lookup dispatch in `useDashboardCoreCase.ts` to role-map patch/persist wiring for supervisor/admin/co1/co2 parity.
+  - validated with `npm --prefix client run build` and `npm --prefix server test`.
 
 ### 2.2 In progress
-- Deep role-symmetric refactor of remaining repeated role logic in UI/controller wiring
 - Extended UI consistency rollout (same layout contract across all active forms)
 - Documentation synchronization across all guidance/policy artifacts
 - Post-AD-001 decomposition:
@@ -133,7 +136,7 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 
 ## 4. Current Roadmap
 ### Phase A (stabilize current wave)
-- Complete supervisor-role refactor pass.
+- Completed 2026-03-11: supervisor-role refactor pass.
 - Finish UI consistency pass across all active forms.
 - Add regression checks for:
   - save/prefill coherence
@@ -180,3 +183,4 @@ Exit criteria:
 7. Completed 2026-03-10 (AD-018): standardized controller error handling via centralized error classes/middleware and structured logging with unified `{ message, code, details }` responses.
 8. Completed 2026-03-10 (AD-010): eliminated client/server DTO enum drift by moving shared workflow contract types to `@fhd/common-types` and wiring both server/client to the shared canonical source.
 9. Completed 2026-03-10 (AD-007): finalized service-boundary decomposition with `rottCaseService`, `mouService`, and `supervisorProfileService`, leaving `titleRegistrationWorkflowService.ts` as composition façade.
+10. Completed 2026-03-11: finalized supervisor-role symmetry refactor in dashboard hook wiring (`useDashboardPhaseBModules.ts`, `useDashboardCoreCase.ts`) and validated with full server tests plus client production build.

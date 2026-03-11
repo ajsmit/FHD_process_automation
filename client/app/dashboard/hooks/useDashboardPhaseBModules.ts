@@ -67,6 +67,9 @@ import {
   type ModuleFormRecord,
 } from '@/lib/api';
 
+type ReviewDecisionValue = 'approved' | 'returned';
+type ReviewHandler = (caseId: number, decision: ReviewDecisionValue) => Promise<{ record: ModuleFormRecord }>;
+
 export function useDashboardPhaseBModules(setInfo: (message: string | null) => void) {
   const [itsRecord, setItsRecord] = useState<ModuleFormRecord | null>(null);
   const [itsData, setItsData] = useState<IntentionToSubmitFormData | null>(null);
@@ -172,15 +175,14 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('INTENTION_TO_SUBMIT submitted.');
   }
 
-  async function reviewItsModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'supervisor' | 'dept') {
+  async function reviewItsModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'supervisor' | 'dept') {
     if (!caseId) return;
-    if (by === 'supervisor') {
-      const response = await reviewIntentionToSubmitBySupervisor(caseId, decisionValue);
-      setItsRecord(response.record);
-    } else {
-      const response = await reviewIntentionToSubmitByDept(caseId, decisionValue);
-      setItsRecord(response.record);
-    }
+    const handlers: Record<'supervisor' | 'dept', ReviewHandler> = {
+      supervisor: reviewIntentionToSubmitBySupervisor,
+      dept: reviewIntentionToSubmitByDept,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setItsRecord(response.record);
     await refreshIntentionToSubmit(caseId);
     setInfo(`INTENTION_TO_SUBMIT ${decisionValue} by ${by}.`);
   }
@@ -208,18 +210,15 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('APPOINT_EXAMINERS submitted.');
   }
 
-  async function reviewAppointModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'dept' | 'chair' | 'faculty') {
+  async function reviewAppointModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'chair' | 'faculty') {
     if (!caseId) return;
-    if (by === 'dept') {
-      const response = await reviewAppointExaminersByDept(caseId, decisionValue);
-      setAppointRecord(response.record);
-    } else if (by === 'chair') {
-      const response = await reviewAppointExaminersByChair(caseId, decisionValue);
-      setAppointRecord(response.record);
-    } else {
-      const response = await reviewAppointExaminersByFaculty(caseId, decisionValue);
-      setAppointRecord(response.record);
-    }
+    const handlers: Record<'dept' | 'chair' | 'faculty', ReviewHandler> = {
+      dept: reviewAppointExaminersByDept,
+      chair: reviewAppointExaminersByChair,
+      faculty: reviewAppointExaminersByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setAppointRecord(response.record);
     await refreshAppointExaminers(caseId);
     setInfo(`APPOINT_EXAMINERS ${decisionValue} by ${by}.`);
   }
@@ -247,21 +246,16 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('CHANGE_TITLE submitted.');
   }
 
-  async function reviewChangeTitleModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
+  async function reviewChangeTitleModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
     if (!caseId) return;
-    if (by === 'supervisor') {
-      const response = await reviewChangeTitleBySupervisor(caseId, decisionValue);
-      setChangeTitleRecord(response.record);
-    } else if (by === 'dept') {
-      const response = await reviewChangeTitleByDept(caseId, decisionValue);
-      setChangeTitleRecord(response.record);
-    } else if (by === 'chair') {
-      const response = await reviewChangeTitleByChair(caseId, decisionValue);
-      setChangeTitleRecord(response.record);
-    } else {
-      const response = await reviewChangeTitleByFaculty(caseId, decisionValue);
-      setChangeTitleRecord(response.record);
-    }
+    const handlers: Record<'supervisor' | 'dept' | 'chair' | 'faculty', ReviewHandler> = {
+      supervisor: reviewChangeTitleBySupervisor,
+      dept: reviewChangeTitleByDept,
+      chair: reviewChangeTitleByChair,
+      faculty: reviewChangeTitleByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setChangeTitleRecord(response.record);
     await refreshChangeTitle(caseId);
     setInfo(`CHANGE_TITLE ${decisionValue} by ${by}.`);
   }
@@ -289,21 +283,16 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('CHANGE_SUPERVISOR submitted.');
   }
 
-  async function reviewChangeSupervisorModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
+  async function reviewChangeSupervisorModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
     if (!caseId) return;
-    if (by === 'supervisor') {
-      const response = await reviewChangeSupervisorBySupervisor(caseId, decisionValue);
-      setChangeSupervisorRecord(response.record);
-    } else if (by === 'dept') {
-      const response = await reviewChangeSupervisorByDept(caseId, decisionValue);
-      setChangeSupervisorRecord(response.record);
-    } else if (by === 'chair') {
-      const response = await reviewChangeSupervisorByChair(caseId, decisionValue);
-      setChangeSupervisorRecord(response.record);
-    } else {
-      const response = await reviewChangeSupervisorByFaculty(caseId, decisionValue);
-      setChangeSupervisorRecord(response.record);
-    }
+    const handlers: Record<'supervisor' | 'dept' | 'chair' | 'faculty', ReviewHandler> = {
+      supervisor: reviewChangeSupervisorBySupervisor,
+      dept: reviewChangeSupervisorByDept,
+      chair: reviewChangeSupervisorByChair,
+      faculty: reviewChangeSupervisorByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setChangeSupervisorRecord(response.record);
     await refreshChangeSupervisor(caseId);
     setInfo(`CHANGE_SUPERVISOR ${decisionValue} by ${by}.`);
   }
@@ -331,21 +320,16 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('ADD_CO_SUPERVISOR submitted.');
   }
 
-  async function reviewAddCoSupervisorModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
+  async function reviewAddCoSupervisorModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'supervisor' | 'dept' | 'chair' | 'faculty') {
     if (!caseId) return;
-    if (by === 'supervisor') {
-      const response = await reviewAddCoSupervisorBySupervisor(caseId, decisionValue);
-      setAddCoSupervisorRecord(response.record);
-    } else if (by === 'dept') {
-      const response = await reviewAddCoSupervisorByDept(caseId, decisionValue);
-      setAddCoSupervisorRecord(response.record);
-    } else if (by === 'chair') {
-      const response = await reviewAddCoSupervisorByChair(caseId, decisionValue);
-      setAddCoSupervisorRecord(response.record);
-    } else {
-      const response = await reviewAddCoSupervisorByFaculty(caseId, decisionValue);
-      setAddCoSupervisorRecord(response.record);
-    }
+    const handlers: Record<'supervisor' | 'dept' | 'chair' | 'faculty', ReviewHandler> = {
+      supervisor: reviewAddCoSupervisorBySupervisor,
+      dept: reviewAddCoSupervisorByDept,
+      chair: reviewAddCoSupervisorByChair,
+      faculty: reviewAddCoSupervisorByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setAddCoSupervisorRecord(response.record);
     await refreshAddCoSupervisor(caseId);
     setInfo(`ADD_CO_SUPERVISOR ${decisionValue} by ${by}.`);
   }
@@ -373,18 +357,15 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('CHANGE_EXAMINERS submitted.');
   }
 
-  async function reviewChangeModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'dept' | 'chair' | 'faculty') {
+  async function reviewChangeModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'chair' | 'faculty') {
     if (!caseId) return;
-    if (by === 'dept') {
-      const response = await reviewChangeExaminersByDept(caseId, decisionValue);
-      setChangeRecord(response.record);
-    } else if (by === 'chair') {
-      const response = await reviewChangeExaminersByChair(caseId, decisionValue);
-      setChangeRecord(response.record);
-    } else {
-      const response = await reviewChangeExaminersByFaculty(caseId, decisionValue);
-      setChangeRecord(response.record);
-    }
+    const handlers: Record<'dept' | 'chair' | 'faculty', ReviewHandler> = {
+      dept: reviewChangeExaminersByDept,
+      chair: reviewChangeExaminersByChair,
+      faculty: reviewChangeExaminersByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setChangeRecord(response.record);
     await refreshChangeExaminers(caseId);
     setInfo(`CHANGE_EXAMINERS ${decisionValue} by ${by}.`);
   }
@@ -412,15 +393,14 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('EXAMINER_SUMMARY_CV submitted.');
   }
 
-  async function reviewSummaryModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+  async function reviewSummaryModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
     if (!caseId) return;
-    if (by === 'dept') {
-      const response = await reviewExaminerSummaryCvByDept(caseId, decisionValue);
-      setSummaryRecord(response.record);
-    } else {
-      const response = await reviewExaminerSummaryCvByFaculty(caseId, decisionValue);
-      setSummaryRecord(response.record);
-    }
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewExaminerSummaryCvByDept,
+      faculty: reviewExaminerSummaryCvByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setSummaryRecord(response.record);
     await refreshExaminerSummaryCv(caseId);
     setInfo(`EXAMINER_SUMMARY_CV ${decisionValue} by ${by}.`);
   }
@@ -448,15 +428,14 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('APPOINT_ARBITER submitted.');
   }
 
-  async function reviewArbiterModule(caseId: number | null, decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+  async function reviewArbiterModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
     if (!caseId) return;
-    if (by === 'dept') {
-      const response = await reviewAppointArbiterByDept(caseId, decisionValue);
-      setArbiterRecord(response.record);
-    } else {
-      const response = await reviewAppointArbiterByFaculty(caseId, decisionValue);
-      setArbiterRecord(response.record);
-    }
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewAppointArbiterByDept,
+      faculty: reviewAppointArbiterByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setArbiterRecord(response.record);
     await refreshAppointArbiter(caseId);
     setInfo(`APPOINT_ARBITER ${decisionValue} by ${by}.`);
   }

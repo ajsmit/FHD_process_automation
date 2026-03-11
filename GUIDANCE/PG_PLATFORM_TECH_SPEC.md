@@ -1,6 +1,6 @@
 # PG Workflow Platform Technical Specification
 
-Version: 2026-03-10  
+Version: 2026-03-11  
 Status: Implemented-baseline + next-phase guidance  
 Scope: Current production code paths for ROTT, supervisor profiles, external onboarding, MOU, next-wave examination modules, and operational modules
 
@@ -439,7 +439,7 @@ Legacy 410 endpoint sunset timeline:
   - transition and non-transition route families now enforce JWT auth and explicit role/assignment authorization checks.
   - production startup guardrails enforce trusted-header provider mode and explicit CORS allowlist configuration.
   - closure recorded as `AD-004` in [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md).
-- Complete role-symmetric refactor of all repeated role card logic in ROTT (reduce remaining per-role branching in page wiring).
+- Supervisor-role symmetry hardening completed for remaining dashboard hook role-dispatch wiring (ROTT external role lookup + Phase-B/change-request review routing).
 - Next-wave role-chain enforcement:
   - role-scoped approval state machines are implemented for current Phase-B and change-request modules.
   - edge-case assertion depth is now implemented across module review chains (wrong-state rejection, return/resubmit loops, module-entry status/summary assertions).

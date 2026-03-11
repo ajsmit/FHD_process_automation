@@ -54,6 +54,8 @@ interface SendExternalProfileLinkDeps {
   refreshToDoItems: () => Promise<void>;
 }
 
+type ExternalInviteRole = 'supervisor' | 'admin' | 'co1' | 'co2';
+
 export function useDashboardCoreCase() {
   const [activeModule, setActiveModule] = useState('title_registration');
   const [studentNumber, setStudentNumber] = useState('1234567');
@@ -71,7 +73,7 @@ export function useDashboardCoreCase() {
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [externalSearchByRole, setExternalSearchByRole] = useState<Record<'supervisor' | 'admin' | 'co1' | 'co2', string>>({
+  const [externalSearchByRole, setExternalSearchByRole] = useState<Record<ExternalInviteRole, string>>({
     supervisor: '',
     admin: '',
     co1: '',
@@ -79,7 +81,7 @@ export function useDashboardCoreCase() {
   });
   const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [inviteStatusByRole, setInviteStatusByRole] = useState<Record<'supervisor' | 'admin' | 'co1' | 'co2', ExternalInviteStatus | null>>({
+  const [inviteStatusByRole, setInviteStatusByRole] = useState<Record<ExternalInviteRole, ExternalInviteStatus | null>>({
     supervisor: null,
     admin: null,
     co1: null,
@@ -102,7 +104,7 @@ export function useDashboardCoreCase() {
 
   async function refreshExternalInviteStatuses(caseId: number) {
     const response = await getExternalInviteStatuses(caseId);
-    const next: Record<'supervisor' | 'admin' | 'co1' | 'co2', ExternalInviteStatus | null> = {
+    const next: Record<ExternalInviteRole, ExternalInviteStatus | null> = {
       supervisor: null,
       admin: null,
       co1: null,
@@ -383,8 +385,8 @@ export function useDashboardCoreCase() {
   );
 
   const filteredExternalByRole = useMemo(() => {
-    const roles: Array<'supervisor' | 'admin' | 'co1' | 'co2'> = ['supervisor', 'admin', 'co1', 'co2'];
-    const result: Record<'supervisor' | 'admin' | 'co1' | 'co2', ExternalAcademicDirectory[]> = {
+    const roles: ExternalInviteRole[] = ['supervisor', 'admin', 'co1', 'co2'];
+    const result: Record<ExternalInviteRole, ExternalAcademicDirectory[]> = {
       supervisor: externalDirectory,
       admin: externalDirectory,
       co1: externalDirectory,
@@ -401,11 +403,11 @@ export function useDashboardCoreCase() {
     return result;
   }, [externalDirectory, externalDirectorySearchIndex, externalSearchByRole]);
 
-  function filteredExternalDirectory(role: 'supervisor' | 'admin' | 'co1' | 'co2'): ExternalAcademicDirectory[] {
+  function filteredExternalDirectory(role: ExternalInviteRole): ExternalAcademicDirectory[] {
     return filteredExternalByRole[role];
   }
 
-  async function sendExternalProfileLink(role: 'supervisor' | 'admin' | 'co1' | 'co2', emailInput: string, deps: SendExternalProfileLinkDeps) {
+  async function sendExternalProfileLink(role: ExternalInviteRole, emailInput: string, deps: SendExternalProfileLinkDeps) {
     if (!caseRecord || !formData) return;
     setInviteFeedback(null);
     setInviteLink(null);
@@ -461,13 +463,13 @@ export function useDashboardCoreCase() {
   }
 
   async function applyExternalLookup(
-    role: 'supervisor' | 'admin' | 'co1' | 'co2',
+    role: ExternalInviteRole,
     value: string,
   ) {
     if (!formData) return;
     const selected = externalDirectory.find((entry) => String(entry.id) === value);
-    if (role === 'supervisor') {
-      await saveSupervisorFields({
+    const rolePatchMap: Record<ExternalInviteRole, Partial<FormData>> = {
+      supervisor: {
         'Supervisor is UWC-internal': 'No',
         'Supervisor External Lookup Id': value,
         'Supervisor Title': selected?.title ?? formData['Supervisor Title'],
@@ -476,11 +478,8 @@ export function useDashboardCoreCase() {
         'Supervisor Qualifications': selected?.highest_qualification ?? formData['Supervisor Qualifications'],
         'Supervisor External Address': selected?.address ?? formData['Supervisor External Address'],
         'Supervisor External Email': selected?.email ?? formData['Supervisor External Email'],
-      });
-      return;
-    }
-    if (role === 'admin') {
-      await saveFields({
+      },
+      admin: {
         'Administrative Supervisor External Lookup Id': value,
         'Administrative Supervisor External Title': selected?.title ?? formData['Administrative Supervisor External Title'],
         'Administrative Supervisor External First Name': selected?.first_name ?? formData['Administrative Supervisor External First Name'],
@@ -488,11 +487,8 @@ export function useDashboardCoreCase() {
         'Administrative Supervisor Qualifications (Nominal Role)': selected?.highest_qualification ?? formData['Administrative Supervisor Qualifications (Nominal Role)'],
         'Administrative Supervisor External Address': selected?.address ?? formData['Administrative Supervisor External Address'],
         'Administrative Supervisor External Email': selected?.email ?? formData['Administrative Supervisor External Email'],
-      });
-      return;
-    }
-    if (role === 'co1') {
-      await saveCoSupervisorFields({
+      },
+      co1: {
         'Co-supervisor is UWC-internal': 'No',
         'Co-supervisor External Lookup Id': value,
         'Co-supervisor Title': selected?.title ?? formData['Co-supervisor Title'],
@@ -501,19 +497,25 @@ export function useDashboardCoreCase() {
         'Co-supervisor Qualifications': selected?.highest_qualification ?? formData['Co-supervisor Qualifications'],
         'Co-supervisor External Address': selected?.address ?? formData['Co-supervisor External Address'],
         'Co-supervisor External Email': selected?.email ?? formData['Co-supervisor External Email'],
-      });
-      return;
-    }
-    await saveCoSupervisorFields({
-      'Second Co-supervisor is UWC-internal': 'No',
-      'Second Co-supervisor External Lookup Id': value,
-      'Second Co-supervisor Title': selected?.title ?? formData['Second Co-supervisor Title'],
-      'Second Co-supervisor External First Name': selected?.first_name ?? formData['Second Co-supervisor External First Name'],
-      'Second Co-supervisor External Surname': selected?.last_name ?? formData['Second Co-supervisor External Surname'],
-      'Second Co-supervisor Qualifications': selected?.highest_qualification ?? formData['Second Co-supervisor Qualifications'],
-      'Second Co-supervisor External Address': selected?.address ?? formData['Second Co-supervisor External Address'],
-      'Second Co-supervisor External Email': selected?.email ?? formData['Second Co-supervisor External Email'],
-    });
+      },
+      co2: {
+        'Second Co-supervisor is UWC-internal': 'No',
+        'Second Co-supervisor External Lookup Id': value,
+        'Second Co-supervisor Title': selected?.title ?? formData['Second Co-supervisor Title'],
+        'Second Co-supervisor External First Name': selected?.first_name ?? formData['Second Co-supervisor External First Name'],
+        'Second Co-supervisor External Surname': selected?.last_name ?? formData['Second Co-supervisor External Surname'],
+        'Second Co-supervisor Qualifications': selected?.highest_qualification ?? formData['Second Co-supervisor Qualifications'],
+        'Second Co-supervisor External Address': selected?.address ?? formData['Second Co-supervisor External Address'],
+        'Second Co-supervisor External Email': selected?.email ?? formData['Second Co-supervisor External Email'],
+      },
+    };
+    const persistByRole: Record<ExternalInviteRole, (patch: Partial<FormData>) => Promise<void>> = {
+      supervisor: saveSupervisorFields,
+      admin: saveFields,
+      co1: saveCoSupervisorFields,
+      co2: saveCoSupervisorFields,
+    };
+    await persistByRole[role](rolePatchMap[role]);
   }
 
   async function handleAdminSupervisorSameAsSupervisorChange(value: 'Yes' | 'No') {
