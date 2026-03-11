@@ -100,6 +100,12 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - `client/app/title-registration/components/ExternalRegistryLookup.tsx`
     - `client/app/title-registration/components/ExternalInviteModal.tsx`
   - aligned form container/control contrast in supervisor profile cards to match active module form conventions.
+- Regression checks for Phase A coherence/compliance completed:
+  - added `server/src/services/rottRegressionChecks.test.ts` covering:
+    - save/prefill coherence for ROTT immutable vs editable fields,
+    - external invite completion synchronization into canonical case form fields,
+    - PDF regeneration parity signal against persisted DB form-state changes.
+  - validated in `server` test suite (`npm --prefix server test`).
 
 ### 2.2 In progress
 - Documentation synchronization across all guidance/policy artifacts
@@ -147,7 +153,7 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 ### Phase A (stabilize current wave)
 - Completed 2026-03-11: supervisor-role refactor pass.
 - Completed 2026-03-11: UI consistency pass across all active forms.
-- Add regression checks for:
+- Completed 2026-03-11: regression checks added for:
   - save/prefill coherence
   - invite completion synchronization
   - PDF content parity with DB state.
