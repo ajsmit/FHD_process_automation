@@ -14,11 +14,16 @@
     "build:client": "npm run build --workspace=client",
     "build:server": "npm run build --workspace=server",
     "test:server": "npm run test --workspace=server",
+    "test:e2e:ui": "playwright test",
+    "test:full-regression": "npm run test:server && npm run test:e2e:ui && npm run build:client",
     "start": "npm start --workspace=server",
     "check:dashboard-size": "./scripts/check-dashboard-sizes.sh",
     "check:openapi-contract": "./scripts/check-openapi-contract.sh"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
 }

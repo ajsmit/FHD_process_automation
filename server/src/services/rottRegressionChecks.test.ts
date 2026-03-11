@@ -146,10 +146,12 @@ test('invite completion synchronization updates invite status, registry row, and
   assert.equal(invite.token.length > 0, true);
 
   const uniqueId = `9001015009${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+  const uniqueFirstName = `Grace${fixture.studentNumber}`;
+  const uniqueLastName = 'Hopper';
   const completed = await completeExternalAcademicInvite(invite.token, {
     title: 'Prof',
-    first_name: 'Grace',
-    last_name: 'Hopper',
+    first_name: uniqueFirstName,
+    last_name: uniqueLastName,
     highest_qualification: 'PhD',
     email: inviteEmail,
     address: '42 Academic Road',
@@ -169,10 +171,10 @@ test('invite completion synchronization updates invite status, registry row, and
   const refreshed = await getCaseById(fixture.caseId);
   assert.equal(refreshed.formData['Supervisor is UWC-internal'], 'No');
   assert.equal(refreshed.formData['Supervisor External Lookup Id'], String(completed.externalAcademicId));
-  assert.equal(refreshed.formData['Supervisor External First Name'], 'Grace');
-  assert.equal(refreshed.formData['Supervisor External Surname'], 'Hopper');
+  assert.equal(refreshed.formData['Supervisor External First Name'], uniqueFirstName);
+  assert.equal(refreshed.formData['Supervisor External Surname'], uniqueLastName);
   assert.equal(refreshed.formData['Supervisor External Email'], inviteEmail);
-  assert.equal(refreshed.formData.Supervisor, 'Grace Hopper');
+  assert.equal(refreshed.formData.Supervisor, `${uniqueFirstName} ${uniqueLastName}`);
 });
 
 test('PDF parity with DB state regenerates output when persisted form data changes', async () => {
