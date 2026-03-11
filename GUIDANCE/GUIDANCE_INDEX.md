@@ -38,6 +38,9 @@ Purpose: Keep GUIDANCE docs mutually supporting, non-redundant, and easy to main
 9. `AUTHORIZATION_MATRIX.md`
 - Required role-to-endpoint authorization baseline for server-side workflow enforcement.
 
+10. `E2E_REGRESSION_STRATEGY.md`
+- E2E/UI regression rationale, scope, and maintenance rules for Playwright-based release safety checks.
+
 ## 2. Non-Redundancy Rules
 1. Do not duplicate full policy prose outside `POLICY_RULEBOOK.md`; reference it.
 2. Do not duplicate field mapping tables outside `POLICY_FIELD_MAP.md`; reference it.

@@ -278,7 +278,10 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - validation middleware test suite extended in `server/src/middleware/requestValidation.test.ts`.
 - verified with `npm run build --workspace=server`, `npm run test --workspace=server`, and `npm run build --workspace=client`.
 - AD-017 marked Closed.
-38. AD-016 closure update on 2026-03-10 (coverage expansion tranche):
+38. Post-AD-001 decomposition closure confirmation on 2026-03-11:
+- confirmed `server/src/services/titleRegistrationWorkflowService.ts` remains thin composition/facade wiring over bounded services (`rottCaseService`, `supervisorProfileService`, `mouService`, `operationsFeedService`).
+- added CI guardrail `scripts/check-service-boundaries.sh` and wired it in `.github/workflows/main.yml` to prevent reintroduction of direct DB coupling or monolithic growth in facade service.
+39. AD-016 closure update on 2026-03-10 (coverage expansion tranche):
 - expanded server test surface with controller, middleware, and route smoke coverage:
   - `server/src/controllers/titleRegistrationController.test.ts` (happy/error controller smoke cases)
   - `server/src/middleware/auth.test.ts` (auth middleware bearer-token flow)
@@ -287,7 +290,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - retained and re-verified existing service-level transition/module/PDF coverage.
 - verification: `npm run build --workspace=server` and `npm run test --workspace=server` now pass with expanded suite (37 passing tests).
 - AD-016 marked Closed.
-39. AD-018 progress update on 2026-03-10 (central error stack tranche):
+40. AD-018 progress update on 2026-03-10 (central error stack tranche):
 - introduced centralized error primitives in `server/src/errors/httpErrors.ts`:
   - `AppError` base + typed subclasses (`ValidationError`, `AuthenticationError`, `AuthorizationError`, `NotFoundError`, `ConflictError`, `InternalServerError`)
   - `toAppError(...)` normalization helper for unknown throws.
@@ -303,7 +306,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
   to use normalized `AppError` fallbacks and consistent error codes/messages.
 - verification: `npm run build --workspace=server`, `npm run test --workspace=server`, and `npm run build --workspace=client`.
 - AD-018 remains In Progress pending full controller-surface migration (notably `titleRegistrationWorkflowController.ts`, `phase1Controller.ts`, `titleRegistrationController.ts`).
-40. AD-018 closure update on 2026-03-10 (full controller migration tranche):
+41. AD-018 closure update on 2026-03-10 (full controller migration tranche):
 - completed controller-surface migration to centralized error normalization:
   - `server/src/controllers/titleRegistrationWorkflowController.ts`
   - `server/src/controllers/phase1Controller.ts`
@@ -315,13 +318,13 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - global Express not-found + error middleware (`server/src/middleware/errorHandler.ts`) remains active in bootstrap (`server/src/server.ts`) with structured JSON logging (`server/src/logging/logger.ts`).
 - verification: `npm run build --workspace=server`, `npm run test --workspace=server` (37 passing), and `npm run build --workspace=client`.
 - AD-018 marked Closed.
-41. AD-019 closure update on 2026-03-10 (OpenAPI contract + versioning policy tranche):
+42. AD-019 closure update on 2026-03-10 (OpenAPI contract + versioning policy tranche):
 - introduced route-derived contract generator `server/src/contracts/generateOpenApi.ts` and committed canonical artifact `server/openapi/openapi.v1.json`.
 - added generation command `npm run openapi:generate --workspace=server`.
 - added CI drift guard `scripts/check-openapi-contract.sh` and workflow enforcement step in `.github/workflows/main.yml`.
 - documented API versioning + deprecation policy and legacy `410` endpoint sunset timeline in `GUIDANCE/PG_PLATFORM_TECH_SPEC.md` (`5.5 OpenAPI Contract, Versioning, And Sunset Policy`).
 - AD-019 marked Closed.
-42. AD-025 closure update on 2026-03-10 (resilience and degraded-fallback tranche):
+43. AD-025 closure update on 2026-03-10 (resilience and degraded-fallback tranche):
 - added shared resilience utilities in `server/src/utils/resilience.ts`:
   - `retryWithBackoff(...)` for bounded transient retries with exponential backoff
   - `settleAll(...)` for non-fail-fast parallel aggregation
@@ -336,7 +339,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - hardened ops feed enrichment in `server/src/services/operationsFeedService.ts` to return degraded rows when per-case enrichment fails instead of failing the entire pipeline response.
 - added resilience unit tests in `server/src/utils/resilience.test.ts`.
 - AD-025 marked Closed.
-43. AD-007 closure update on 2026-03-10 (service-boundary completion tranche):
+44. AD-007 closure update on 2026-03-10 (service-boundary completion tranche):
 - moved primary orchestration implementation to `server/src/services/rottCaseService.ts`.
 - introduced bounded domain service entrypoints:
   - `server/src/services/supervisorProfileService.ts`
@@ -346,14 +349,14 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - reduced `server/src/services/titleRegistrationWorkflowService.ts` to composition/facade wiring across bounded services, preserving controller/service call contracts.
 - verified with `npm run build --workspace=server` and `npm run test --workspace=server`.
 - AD-007 marked Closed.
-44. AD-010 closure update on 2026-03-10 (shared contract package tranche):
+45. AD-010 closure update on 2026-03-10 (shared contract package tranche):
 - implemented canonical cross-workspace DTO/enum package in `packages/common-types/src/index.ts`.
 - updated server contract boundary (`server/src/services/contracts/titleRegistration.ts`) to re-export shared contract types from `@fhd/common-types`.
 - removed duplicated client DTO/enum declarations in `client/lib/api.ts` and replaced with shared imports/exports from `@fhd/common-types`.
 - declared explicit workspace dependencies in `client/package.json` and `server/package.json`.
 - verified with `npm run build --workspace=server`, `npm run test --workspace=server`, and `npm run build --workspace=client`.
 - AD-010 marked Closed.
-45. AD-004 closure update on 2026-03-11 15:42 SAST (route-role enforcement + production auth guardrail completion tranche):
+46. AD-004 closure update on 2026-03-11 15:42 SAST (route-role enforcement + production auth guardrail completion tranche):
 - added route-role authorization middleware `server/src/middleware/roleAuthorization.ts` with audit logging for denied role access.
 - enforced explicit role gates on non-workflow route families:
   - `server/src/api/v1/routes/directoryRoutes.ts` (`departments`, `staff`, `external-academics`, `external-supervisors`, and `external-academics/invite`)

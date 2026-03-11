@@ -20,5 +20,8 @@ jobs:
       - name: Enforce dashboard size guardrails (AD-012)
         run: ./scripts/check-dashboard-sizes.sh
 
+      - name: Enforce service-boundary guardrails (Post-AD-001)
+        run: ./scripts/check-service-boundaries.sh
+
       - name: Enforce OpenAPI contract sync (AD-019)
         run: ./scripts/check-openapi-contract.sh

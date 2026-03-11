@@ -18,6 +18,7 @@
     "test:full-regression": "npm run test:server && npm run test:e2e:ui && npm run build:client",
     "start": "npm start --workspace=server",
     "check:dashboard-size": "./scripts/check-dashboard-sizes.sh",
+    "check:service-boundaries": "./scripts/check-service-boundaries.sh",
     "check:openapi-contract": "./scripts/check-openapi-contract.sh"
   },
   "keywords": [],

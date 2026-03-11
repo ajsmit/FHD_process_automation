@@ -128,17 +128,23 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - module panel/status rendering on active baseline tabs,
     - explicit prerequisite guard behavior for blocked next-wave modules,
     - UI stability when opening blocked module tabs.
-
-### 2.2 In progress
-- Documentation synchronization across all guidance/policy artifacts
-- AD-013 migration-first schema tranche:
+- AD-013 migration-first schema tranche completed:
   - introduced consolidated schema migration `server/src/db/migrations/20260310152000_consolidate_workflow_schema.ts`
   - reduced `server/src/db/initDb.ts` to migration runner + idempotent seed orchestration
   - added explicit migration execution command `npm run db:migrate --workspace=server` via `server/src/db/runMigrations.ts`
   - extracted seed implementation to `server/src/db/seedDemoData.ts`; `initDb.ts` now remains migration + seed wiring orchestration only
   - documented mandatory migration run order in `PG_PLATFORM_TECH_SPEC.md` and `WORKFLOW_ORCHESTRATION_RUNBOOK.md`
+- Documentation synchronization across guidance/policy artifacts completed:
+  - synchronized closure/state tracking across:
+    - `PROJECT_IMPLEMENTATION_PLAN.md`
+    - `ARCHITECTURE_DEBT_REGISTER.md`
+    - `E2E_REGRESSION_STRATEGY.md`
+  - aligned in-progress backlog so `2.3` is the sole next-iteration execution queue.
 
-### 2.3 Not started (next-wave modules)
+### 2.2 In progress
+- None (closed on 2026-03-11).
+
+### 2.3 Next Iteration (tomorrow)
 - Remaining change/progression forms from `ridiculous_forms`
 
 ## 3. Execution Guardrails
