@@ -1,6 +1,6 @@
 # PG Workflow Platform Implementation Plan
 
-Version: 2026-03-10  
+Version: 2026-03-11  
 Status: Rolling plan aligned to implemented code
 
 ## Boundaries
@@ -54,16 +54,14 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - `EXAMINER_SUMMARY_CV`
     - `APPOINT_ARBITER`
   - module-entry audit visibility assertions now included for returned/approved state transitions in integration tests.
-- AD-004 security-coverage slice completed (partial):
-  - protected key non-transition workflow endpoints with JWT + workflow authorization middleware
-  - added case-scoped/profile-scoped authz checks for workflow operations
-  - expanded JWT enforcement to previously open internal route families:
-    - `/api/v1/directory/{departments,staff,external-academics,external-supervisors,external-academics/invite}`
-    - `/api/v1/sasi/students/search`
-    - `/api/v1/title-registrations/*`
-  - aligned disabled dev-login behavior to `404 Not Found` when `ENABLE_DEV_AUTH=false`
-  - added auth endpoint rate limiting (`AUTH_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX_REQUESTS`) on `/api/v1/auth/dev-login`
-  - replaced permissive CORS with environment-driven allowlist (`CORS_ALLOWED_ORIGINS`) in server bootstrap
+- AD-004 authorization + identity hardening closure completed:
+  - enforced explicit route-role authorization middleware on non-workflow route families (`directory`, `sasi`, and legacy `title-registration`)
+  - completed authenticated route-surface coverage with role-based deny/audit behavior
+  - finalized production identity/CORS startup guardrails:
+    - production requires `AUTH_PROVIDER=trusted_header`
+    - production requires explicit `CORS_ALLOWED_ORIGINS`
+    - trusted-header shared-secret + trusted-proxy-IP requirements enforced
+  - synchronized authorization status docs (`AUTHORIZATION_MATRIX.md`) and debt register closure (`ARCHITECTURE_DEBT_REGISTER.md`)
 - AD-011 repository hygiene slice completed:
   - explicit ignore contract added for generated/runtime artifacts (`client/.next`, `client/.next_backup*`, `server/dist`, `server/dev.sqlite3`)
   - tracked generated artifacts removed from git index (`--cached`, local files retained)
@@ -100,7 +98,6 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - `server/src/services/rottCaseService.ts`
     - `server/src/services/supervisorProfileService.ts`
     - `server/src/services/mouService.ts`
-- Full authentication + identity-bound authorization enforcement on remaining unprotected endpoint surface
 - Phase-B next-wave modules baseline implementation:
   - `INTENTION_TO_SUBMIT`
   - `APPOINT_EXAMINERS`
@@ -177,7 +174,7 @@ Exit criteria:
 1. Completed 2026-03-10 (AD-012): decomposed dashboard page/orchestration/module panels into bounded components/hooks and enforced CI size guardrails.
 2. Completed 2026-03-10 (AD-013): migrated canonical schema evolution to versioned migrations, reduced `initDb` to orchestration-only, and documented migration run order.
 3. Completed 2026-03-10 (AD-014): introduced registry-driven module lifecycle primitives to remove repeated save/submit/review/print orchestration logic across module services.
-4. Address AD-004: replace dev-login simulation path with production identity/session model and finish full route-surface authorization parity.
+4. Completed 2026-03-11 (AD-004): finalized route-surface authorization parity and production identity-provider guardrails; AD-004 moved to Closed in the debt register.
 5. Completed 2026-03-10 (AD-017): deployed zod-based request boundary validation middleware/schemas across auth, workflow, directory, SASI, and legacy phase1/title-registration route surfaces.
 6. Completed 2026-03-10 (AD-016): expanded server coverage with controller smoke, middleware auth/validation, and API route smoke tests alongside existing service-level tests.
 7. Completed 2026-03-10 (AD-018): standardized controller error handling via centralized error classes/middleware and structured logging with unified `{ message, code, details }` responses.

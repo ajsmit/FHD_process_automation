@@ -401,7 +401,7 @@ Return loops are mandatory for quality-control resilience.
 3. No module transition endpoint may remain unauthenticated in production mode.
 4. Current implementation status:
 - first-slice transition route authorization is implemented via JWT Bearer auth + actor-to-case authorization checks.
-- broader endpoint-surface coverage and production identity integration remain tracked as architecture debt (`AD-004`).
+- broader endpoint-surface coverage and production identity integration closure is recorded in architecture debt (`AD-004`, Closed on 2026-03-11).
 - required role-action mapping baseline is maintained in [AUTHORIZATION_MATRIX.md](./AUTHORIZATION_MATRIX.md).
 
 ## 11. Implementation Rules For AI (Strict)

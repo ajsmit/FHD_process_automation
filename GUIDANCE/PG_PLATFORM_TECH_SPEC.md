@@ -435,10 +435,10 @@ Legacy 410 endpoint sunset timeline:
   - remaining structural debt is tracked as:
     - AD-007 (service still multi-domain and large)
   - see [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md).
-- Authentication/authorization enforcement gap:
-  - transition endpoints now require JWT Bearer auth.
-  - remaining gap: complete identity-to-assignment authorization coverage across broader non-transition actions and production login model hardening.
-  - tracked as `AD-004` in [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md).
+- Authentication/authorization hardening closure:
+  - transition and non-transition route families now enforce JWT auth and explicit role/assignment authorization checks.
+  - production startup guardrails enforce trusted-header provider mode and explicit CORS allowlist configuration.
+  - closure recorded as `AD-004` in [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md).
 - Complete role-symmetric refactor of all repeated role card logic in ROTT (reduce remaining per-role branching in page wiring).
 - Next-wave role-chain enforcement:
   - role-scoped approval state machines are implemented for current Phase-B and change-request modules.

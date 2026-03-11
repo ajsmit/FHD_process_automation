@@ -1,14 +1,14 @@
 # Authorization Matrix
 
-Version: 2026-03-10
-Status: Policy-complete specification; implementation partially deployed (transition + key non-transition workflow endpoints) — broader coverage tracked as AD-004
+Version: 2026-03-11
+Status: Policy-complete specification; implementation deployed across authenticated endpoint surfaces.
 Scope: All authenticated workflow actors in the PG Workflow Platform
 
 ## Boundaries
 - This file is authoritative for role definitions, module access rights, data scoping rules, and security requirements.
 - Policy doctrine and lifecycle gates are owned by [POLICY_RULEBOOK.md](./POLICY_RULEBOOK.md).
 - Endpoint/table inventory is owned by [PG_PLATFORM_TECH_SPEC.md](./PG_PLATFORM_TECH_SPEC.md).
-- Implementation gaps and timelines are tracked in [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md) (AD-004).
+- Historical implementation gap tracking for authorization coverage is recorded in [ARCHITECTURE_DEBT_REGISTER.md](./ARCHITECTURE_DEBT_REGISTER.md) (AD-004, closed).
 
 ---
 
@@ -334,14 +334,14 @@ Token security requirements:
 | `ENABLE_DEV_AUTH` flag for dev identity issuance | Deployed | — |
 | `users` table role enum expansion (5 roles + admin) | **Deployed** (DB migration + legacy-admin backfill + token/middleware/service support) | AD-004 |
 | `users.staff_number` + `users.departments` fields | **Deployed (baseline)** (schema + backfill migration + seed alignment in place; production governance lifecycle still pending) | AD-004 |
-| JWT auth middleware on non-transition endpoints | **Partial** (workflow case/profile/feed endpoints protected; internal directory/SASI/legacy title-registration routes protected; legacy `phase1` routes now also require auth when enabled) | AD-004 |
-| Row-level scoping enforcement in service layer | **Partial** (case/profile scoped workflow middleware deployed for protected workflow endpoints) | AD-004 |
+| JWT auth middleware on non-transition endpoints | **Deployed** (workflow, internal directory, SASI, legacy title-registration, and legacy `phase1` route families now require auth where enabled) | AD-004 (Closed) |
+| Row-level scoping enforcement in service layer | **Deployed** (case/profile/module-scoped authorization middleware enforces role + assignment checks for protected workflow operations) | AD-004 (Closed) |
 | Password hash storage + login endpoint | **Deployed** (`POST /api/v1/auth/login`, seeded demo password hash) | AD-004 |
-| Production identity provider integration (replace dev login) | **Partial** (`AUTH_PROVIDER=trusted_header` + `/auth/provider-login` adapter seam + trusted source IP enforcement + conflict-safe identity mapping implemented; enterprise IdP/proxy rollout and ops hardening pending) | AD-004 |
+| Production identity provider integration (replace dev login) | **Deployed** (`AUTH_PROVIDER=trusted_header` + `/auth/provider-login` with trusted-source IP enforcement, shared-secret validation, identity-conflict rejection, and production startup guardrails requiring provider-mode configuration) | AD-004 (Closed) |
 | Refresh token rotation + revocation | **Deployed** (`/auth/refresh`, `/auth/logout`, `/auth/logout-all`) | AD-004 |
 | Audit logging for unauthorized attempts | **Deployed** (`auth_audit_events` + auth/authorization middleware/controller events) | AD-004 |
 | External invite token hardening (hash storage, single-use) | **Deployed (baseline)** (hash-validated token lookup + encrypted token at rest + single-use completion state) | AD-004 |
-| CORS production lock-down | **Partial** (environment allowlist `CORS_ALLOWED_ORIGINS` enforced; production policy hardening still required) | AD-004 |
-| Rate limiting on auth endpoints | **Deployed (baseline)** (`/auth/dev-login`, `/auth/login`, `/auth/provider-login`, `/auth/refresh` rate-limited via `AUTH_RATE_LIMIT_WINDOW_MS` + `AUTH_RATE_LIMIT_MAX_REQUESTS`) | AD-004 |
+| CORS production lock-down | **Deployed** (`CORS_ALLOWED_ORIGINS` allowlist enforced; production startup guardrails now require explicit allowlist configuration) | AD-004 (Closed) |
+| Rate limiting on auth endpoints | **Deployed** (`/auth/dev-login`, `/auth/login`, `/auth/provider-login`, `/auth/refresh` rate-limited via `AUTH_RATE_LIMIT_WINDOW_MS` + `AUTH_RATE_LIMIT_MAX_REQUESTS`) | AD-004 (Closed) |
 
 All items above are required before production deployment. The current dev-login flow (`/auth/dev-login`) must not reach production.

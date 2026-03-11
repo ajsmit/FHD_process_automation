@@ -1,6 +1,6 @@
 # Architecture Debt Register
 
-Version: 2026-03-10
+Version: 2026-03-11
 Status: Active
 Purpose: Track structural debt that affects maintainability, refactor planning, and release risk.
 
@@ -10,7 +10,7 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 | AD-001 | Monolithic `server/src/services/titleRegistrationWorkflowService.ts` previously contained orchestration + validation + PDF generation in one service. | High change risk, low cohesion, hard testability. | High | Closed | Extracted workflow transitions to `server/src/services/workflow/titleRegistrationTransitions.ts` and PDF composition to `server/src/services/pdf-generation/*`; monolith now delegates to extracted modules. |
 | AD-002 | Residual hard-coded artifact host in client (`http://localhost:3001`) for PDF/CV links. | Environment portability risk. | High | Closed | Replaced localhost fallback with env/browser-origin resolution (`NEXT_PUBLIC_API_BASE` or runtime origin) for API and generated artifact links. |
 | AD-003 | Workspace root `.env.example` and `server/.env.example` were not fully reconciled. | Configuration drift/confusion risk. | Medium | Closed | Formalized root `.env.example` as authoritative env contract, and aligned `server/.env.example` + `client/.env.example` as synchronized projection templates. |
-| AD-004 | Authentication/authorization coverage is partial: JWT + actor-to-case checks are active for transition routes, and key non-transition workflow endpoints are now protected, but full endpoint coverage and production-grade identity model are still incomplete. | High policy/compliance risk outside transition path. | Critical | In Progress | Extend identity-bound authz coverage across remaining endpoint surface and finalize production identity model per `AUTHORIZATION_MATRIX.md`. |
+| AD-004 | Authentication/authorization coverage previously had partial endpoint protection and unresolved production identity hardening. | High policy/compliance risk outside transition path. | Critical | Closed | Enforced authenticated route-family role gates (workflow/non-workflow), finalized production trusted-header identity guardrails, and synchronized authorization documentation/status to deployed state in `AUTHORIZATION_MATRIX.md`. |
 | AD-005 | Legacy `phase1_workflows.intention_to_submit_status` schema state could conflict with canonical `INTENTION_TO_SUBMIT` module semantics. | Medium conceptual/model drift risk for future module implementation. | High | Closed | Removed `intention_to_submit_status` from legacy phase1 schema contract and bootstrap migration path; legacy ITS endpoints remain retired (`410`). |
 | AD-006 | Extracted workflow/PDF modules previously imported canonical TS types from `titleRegistrationWorkflowService.ts` (`FormData`, `MouFormData`, `TitleRegistrationCase`, `ReviewDecision`, `SupervisorProfileForm`). | Coupling back to monolith weakens extraction boundaries and increases refactor friction. | Medium | Closed | Shared contracts extracted to `server/src/services/contracts/titleRegistration.ts`; workflow/PDF/middleware/controller imports now resolve to contracts module. |
 | AD-007 | `titleRegistrationWorkflowService.ts` remains a large multi-domain orchestrator (ROTT, external invites, supervisor profiles, MOU, to-do feeds). | Residual low cohesion and elevated regression risk for unrelated changes. | High | Closed | Split orchestration into bounded domain services (`rottCaseService`, `supervisorProfileService`, `mouService`, `externalAcademicOnboardingService`, `operationsFeedService`) and converted `titleRegistrationWorkflowService.ts` into a thin composition façade. |
@@ -353,8 +353,23 @@ Purpose: Track structural debt that affects maintainability, refactor planning, 
 - declared explicit workspace dependencies in `client/package.json` and `server/package.json`.
 - verified with `npm run build --workspace=server`, `npm run test --workspace=server`, and `npm run build --workspace=client`.
 - AD-010 marked Closed.
+45. AD-004 closure update on 2026-03-11 15:42 SAST (route-role enforcement + production auth guardrail completion tranche):
+- added route-role authorization middleware `server/src/middleware/roleAuthorization.ts` with audit logging for denied role access.
+- enforced explicit role gates on non-workflow route families:
+  - `server/src/api/v1/routes/directoryRoutes.ts` (`departments`, `staff`, `external-academics`, `external-supervisors`, and `external-academics/invite`)
+  - `server/src/api/v1/routes/sasiRoutes.ts` (`students/search`)
+  - `server/src/api/v1/routes/titleRegistrationRoutes.ts` (legacy CRUD endpoints restricted to admin roles)
+- strengthened production startup guardrails in `server/src/auth/startupAuthGuardrails.ts`:
+  - `AUTH_PROVIDER` must be `trusted_header` in production
+  - `CORS_ALLOWED_ORIGINS` must be explicitly configured in production
+  - existing trusted-header shared-secret and trusted-proxy-IP requirements remain enforced
+- aligned simulated client directory actor to policy-compliant role context in `client/lib/api.ts` (directory reads now use supervisor identity in demo auth flow).
+- expanded route regression checks in `server/src/api/v1/routes/routesSmoke.test.ts` for forbidden-role coverage on directory, SASI search, and legacy title-registration surfaces.
+- synchronized authorization status reporting in `GUIDANCE/AUTHORIZATION_MATRIX.md` from partial to deployed entries for AD-004 tracked controls.
+- AD-004 marked Closed.
 
 ## Update Rule
 1. Add debt item when structural inconsistency is discovered.
 2. Link each debt item to roadmap actions in `PROJECT_IMPLEMENTATION_PLAN.md`.
 3. Close item only after code, docs, and regression checks are updated.
+4. Timestamp each debt item resolution under "## Resolution Notes" with the resolution date and time.

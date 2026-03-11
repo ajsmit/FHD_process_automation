@@ -21,6 +21,14 @@ export function validateAuthStartupGuardrails(): void {
     throw new Error('ENABLE_DEV_AUTH=true is not permitted in production.');
   }
 
+  if (provider !== 'trusted_header') {
+    throw new Error('AUTH_PROVIDER must be set to trusted_header in production.');
+  }
+
+  if (!clean(process.env.CORS_ALLOWED_ORIGINS)) {
+    throw new Error('CORS_ALLOWED_ORIGINS must be configured in production.');
+  }
+
   if (provider === 'trusted_header') {
     if (!clean(process.env.AUTH_PROVIDER_SHARED_SECRET)) {
       throw new Error('AUTH_PROVIDER_SHARED_SECRET must be configured in production when AUTH_PROVIDER=trusted_header.');

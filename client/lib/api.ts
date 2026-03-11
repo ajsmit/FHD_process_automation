@@ -862,7 +862,7 @@ export async function printAddCoSupervisor(caseId: number): Promise<{ pdfPath: s
 
 export async function getDirectoryDepartments(faculty?: string): Promise<{ data: DepartmentDirectory[] }> {
   const query = faculty ? `?faculty=${encodeURIComponent(faculty)}` : '';
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/directory/departments${query}`, { headers });
 }
 
@@ -878,20 +878,20 @@ export async function getDirectoryStaff(params?: { department?: string; q?: stri
     search.set('internalOnly', 'true');
   }
   const query = search.toString() ? `?${search.toString()}` : '';
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/directory/staff${query}`, { headers });
 }
 
 export async function getExternalAcademics(q?: string): Promise<{ data: ExternalAcademicDirectory[] }> {
   const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/directory/external-academics${query}`, { headers });
 }
 
 // Backward-compatible alias for legacy naming in existing modules.
 export async function getExternalSupervisors(q?: string): Promise<{ data: ExternalAcademicDirectory[] }> {
   const query = q?.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await authHeadersForActor(demoActorSasiIds.supervisor);
   return request(`/directory/external-supervisors${query}`, { headers });
 }
 
