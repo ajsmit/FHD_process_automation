@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { FORM_CONTROL_CLASS, FORM_LABEL_CLASS } from '@/components/ui/formFieldStyles';
 
 interface ExternalInviteModalProps {
   open: boolean;
@@ -35,9 +36,9 @@ export function ExternalInviteModal({
           Role: <span className='font-medium text-text'>{role}</span>
         </p>
         <label className='mt-4 block space-y-1 text-sm'>
-          <span className='text-muted'>External academic email</span>
+          <span className={FORM_LABEL_CLASS}>External academic email</span>
           <input
-            className='w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2'
+            className={FORM_CONTROL_CLASS}
             value={email}
             onChange={(event) => onEmailChange(event.target.value)}
             placeholder='name@example.org'
@@ -48,7 +49,7 @@ export function ExternalInviteModal({
         )}
         <div className='mt-4 flex gap-2'>
           <Button onClick={onSend}>Send Link</Button>
-          <Button className='bg-transparent' onClick={onClose}>Cancel</Button>
+          <Button className='border-white/20 bg-transparent hover:bg-surface2' onClick={onClose}>Cancel</Button>
         </div>
       </div>
     </div>

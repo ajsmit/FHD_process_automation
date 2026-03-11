@@ -1,3 +1,9 @@
+import {
+  FORM_CONTROL_CLASS,
+  FORM_LABEL_CLASS,
+  FORM_TEXTAREA_CLASS,
+} from '@/components/ui/formFieldStyles';
+
 export interface SelectOption {
   value: string;
   label?: string;
@@ -12,9 +18,6 @@ interface ModuleFieldProps<T extends object> {
   onChange: (label: keyof T & string, value: string) => void;
 }
 
-const CONTROL_CLASS = 'w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2';
-const LONG_CLASS = 'min-h-20';
-
 export function ModuleField<T extends object>({
   label,
   value,
@@ -27,10 +30,10 @@ export function ModuleField<T extends object>({
 
   return (
     <label className={`space-y-1 text-sm ${layoutClass}`}>
-      <span className='text-muted'>{label}</span>
+      <span className={FORM_LABEL_CLASS}>{label}</span>
       {options ? (
         <select
-          className={CONTROL_CLASS}
+          className={FORM_CONTROL_CLASS}
           value={value}
           disabled={disabled}
           onChange={(event) => onChange(label, event.target.value)}
@@ -43,14 +46,14 @@ export function ModuleField<T extends object>({
         </select>
       ) : isLong ? (
         <textarea
-          className={`${LONG_CLASS} ${CONTROL_CLASS}`}
+          className={FORM_TEXTAREA_CLASS}
           value={value}
           disabled={disabled}
           onChange={(event) => onChange(label, event.target.value)}
         />
       ) : (
         <input
-          className={CONTROL_CLASS}
+          className={FORM_CONTROL_CLASS}
           value={value}
           disabled={disabled}
           onChange={(event) => onChange(label, event.target.value)}

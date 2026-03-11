@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { FORM_CONTROL_CLASS, FORM_LABEL_CLASS } from '@/components/ui/formFieldStyles';
 import type { MouFormData, MouFormRecord, SupervisorProfileForm } from '@/lib/api';
 
 interface WorkflowSupportPanelsProps {
@@ -37,6 +38,10 @@ export function WorkflowSupportPanels({
   onPrintMou,
   onCompleteMou,
 }: WorkflowSupportPanelsProps) {
+  const formGridClass = 'grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12';
+  const profileTextAreaClass = `min-h-20 ${FORM_CONTROL_CLASS}`;
+  const publicationTextAreaClass = `min-h-24 ${FORM_CONTROL_CLASS}`;
+
   return (
     <>
       {activeModule === 'supervisor_profiles' && caseRecordId && (
@@ -48,16 +53,16 @@ export function WorkflowSupportPanels({
           </div>
           <div className='space-y-3'>
             {supervisorProfiles.map((profile) => (
-              <div key={profile.id} className='rounded-xl border border-white/10 bg-surface2 p-3 text-sm'>
+              <div key={profile.id} className='rounded-xl border border-white/10 bg-surface p-3 text-sm'>
                 <div className='mb-2 font-semibold'>
                   {profile.role.replace('_', ' ')}: {profile.person_title} {profile.person_name} ({profile.status})
                 </div>
                 <div className='mb-2 text-xs uppercase tracking-wide text-muted'>Profile Form Fields</div>
-                <div className='grid grid-cols-1 gap-2 md:grid-cols-6 lg:grid-cols-12'>
+                <div className={formGridClass}>
                   <label className='space-y-1 md:col-span-3 lg:col-span-4'>
-                    <span className='text-muted'>Publications in last 4 years (3-5)</span>
+                    <span className={FORM_LABEL_CLASS}>Publications in last 4 years (3-5)</span>
                     <input
-                      className='w-full rounded-xl border border-white/10 bg-surface px-3 py-2'
+                      className={FORM_CONTROL_CLASS}
                       value={profile.publication_count ?? ''}
                       onChange={(event) => {
                         const raw = event.target.value.trim();
@@ -67,9 +72,9 @@ export function WorkflowSupportPanels({
                     />
                   </label>
                   <label className='space-y-1 md:col-span-3 lg:col-span-4'>
-                    <span className='text-muted'>New to department?</span>
+                    <span className={FORM_LABEL_CLASS}>New to department?</span>
                     <select
-                      className='w-full rounded-xl border border-white/10 bg-surface px-3 py-2'
+                      className={FORM_CONTROL_CLASS}
                       value={profile.new_to_department}
                       onChange={(event) => onUpdateProfileField(profile.id, { new_to_department: event.target.value })}
                     >
@@ -79,9 +84,9 @@ export function WorkflowSupportPanels({
                     </select>
                   </label>
                   <label className='space-y-1 md:col-span-3 lg:col-span-4'>
-                    <span className='text-muted'>CV attached?</span>
+                    <span className={FORM_LABEL_CLASS}>CV attached?</span>
                     <select
-                      className='w-full rounded-xl border border-white/10 bg-surface px-3 py-2'
+                      className={FORM_CONTROL_CLASS}
                       value={profile.cv_attached}
                       onChange={(event) => onUpdateProfileField(profile.id, { cv_attached: event.target.value })}
                     >
@@ -91,11 +96,11 @@ export function WorkflowSupportPanels({
                     </select>
                   </label>
                   <label className='space-y-1 md:col-span-6 lg:col-span-8'>
-                    <span className='text-muted'>CV upload (.pdf, .doc, .docx)</span>
+                    <span className={FORM_LABEL_CLASS}>CV upload (.pdf, .doc, .docx)</span>
                     <input
                       type='file'
                       accept='.pdf,.doc,.docx'
-                      className='w-full rounded-xl border border-white/10 bg-surface px-3 py-2'
+                      className={FORM_CONTROL_CLASS}
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (file) {
@@ -121,19 +126,19 @@ export function WorkflowSupportPanels({
                     )}
                   </label>
                   <label className='space-y-1 md:col-span-3 lg:col-span-4'>
-                    <span className='text-muted'>Contact email</span>
-                    <input className='w-full rounded-xl border border-white/10 bg-surface px-3 py-2' value={profile.contact_email} onChange={(event) => onUpdateProfileField(profile.id, { contact_email: event.target.value })} />
+                    <span className={FORM_LABEL_CLASS}>Contact email</span>
+                    <input className={FORM_CONTROL_CLASS} value={profile.contact_email} onChange={(event) => onUpdateProfileField(profile.id, { contact_email: event.target.value })} />
                   </label>
                   {profile.role === 'co_supervisor' && (
                     <label className='space-y-1 md:col-span-6 lg:col-span-12'>
-                      <span className='text-muted'>Point 5.2 Motivation (contribution, not expertise)</span>
-                      <textarea className='min-h-20 w-full rounded-xl border border-white/10 bg-surface px-3 py-2' value={profile.contribution_motivation} onChange={(event) => onUpdateProfileField(profile.id, { contribution_motivation: event.target.value })} />
+                      <span className={FORM_LABEL_CLASS}>Point 5.2 Motivation (contribution, not expertise)</span>
+                      <textarea className={profileTextAreaClass} value={profile.contribution_motivation} onChange={(event) => onUpdateProfileField(profile.id, { contribution_motivation: event.target.value })} />
                     </label>
                   )}
                   <label className='space-y-1 md:col-span-6 lg:col-span-12'>
-                    <span className='text-muted'>Latest publications (one per line, 3-5 max)</span>
+                    <span className={FORM_LABEL_CLASS}>Latest publications (one per line, 3-5 max)</span>
                     <textarea
-                      className='min-h-24 w-full rounded-xl border border-white/10 bg-surface px-3 py-2'
+                      className={publicationTextAreaClass}
                       value={(() => {
                         try {
                           const arr = JSON.parse(profile.recent_publications_json) as string[];
@@ -167,7 +172,7 @@ export function WorkflowSupportPanels({
           <p className='mb-3 text-sm text-muted'>Prefilled from ROTT + Supervisor Profiles. Complete remaining sections, confirm signatures, then generate final PDF for Faculty HD records.</p>
           <div className='mb-3 text-sm text-muted'>Status: {mouRecord?.status ?? 'draft'} • Completion: {mouRecord?.completion_percent ?? 0}%</div>
           <div className='mb-2 text-xs uppercase tracking-wide text-muted'>MOU Fields</div>
-          <div className='grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12'>
+          <div className={formGridClass}>
             {(
               [
                 'Student Full Name',
@@ -240,11 +245,11 @@ export function WorkflowSupportPanels({
               ].includes(label);
               return (
                 <label key={label} className={`space-y-1 text-sm ${isLong ? 'md:col-span-6 lg:col-span-12' : 'md:col-span-3 lg:col-span-4'}`}>
-                  <span className='text-muted'>{label}</span>
+                  <span className={FORM_LABEL_CLASS}>{label}</span>
                   {isLong ? (
-                    <textarea className='min-h-20 w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2' value={mouData[label]} disabled={isReadonly || mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)} />
+                    <textarea className={profileTextAreaClass} value={mouData[label]} disabled={isReadonly || mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)} />
                   ) : (
-                    <input className='w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2' value={mouData[label]} disabled={isReadonly || mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)} />
+                    <input className={FORM_CONTROL_CLASS} value={mouData[label]} disabled={isReadonly || mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)} />
                   )}
                 </label>
               );
@@ -259,8 +264,8 @@ export function WorkflowSupportPanels({
               ] as Array<keyof MouFormData>
             ).map((label) => (
               <label key={label} className='space-y-1 text-sm md:col-span-3 lg:col-span-3'>
-                <span className='text-muted'>{label}</span>
-                <select className='w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2' value={mouData[label]} disabled={mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)}>
+                <span className={FORM_LABEL_CLASS}>{label}</span>
+                <select className={FORM_CONTROL_CLASS} value={mouData[label]} disabled={mouRecord?.status === 'completed'} onChange={(event) => onSaveMouField(label, event.target.value)}>
                   <option value='' disabled>---</option>
                   <option value='No'>No</option>
                   <option value='Yes'>Yes</option>

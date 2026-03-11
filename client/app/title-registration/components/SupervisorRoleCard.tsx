@@ -3,6 +3,12 @@
 import type { ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  FORM_CONTROL_CLASS,
+  FORM_FIELD_CLASS,
+  FORM_GRID_CLASS,
+  FORM_LABEL_CLASS,
+} from '@/components/ui/formFieldStyles';
 import type {
   ExternalAcademicDirectory,
   ExternalInviteStatus,
@@ -18,7 +24,7 @@ export type ExternalRole = 'supervisor' | 'admin' | 'co1' | 'co2';
 // ---------------------------------------------------------------------------
 export function FieldLabel({ text, required = false }: { text: string; required?: boolean }) {
   return (
-    <span className='text-muted'>
+    <span className={FORM_LABEL_CLASS}>
       {text}
       {required ? <span className='ml-2 text-xs text-rose-300'>Required</span> : null}
     </span>
@@ -98,9 +104,6 @@ interface SupervisorRoleCardProps {
 // ---------------------------------------------------------------------------
 // SupervisorRoleCard
 // ---------------------------------------------------------------------------
-const fieldClass = 'w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2';
-const sectionGrid = 'grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12';
-
 export function SupervisorRoleCard({
   config,
   formData,
@@ -141,11 +144,11 @@ export function SupervisorRoleCard({
 
       {/* Same-as-primary shortcut (admin supervisor only) */}
       {sameAsPrimary != null && (
-        <div className={`${sectionGrid} mb-3`}>
+        <div className={`${FORM_GRID_CLASS} mb-3`}>
           <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
             <FieldLabel text={sameAsPrimary.label} required />
             <select
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData[sameAsPrimary.fieldKey] as string}
               onChange={(event) =>
                 void sameAsPrimary.onChange(event.target.value as 'Yes' | 'No')
@@ -157,8 +160,8 @@ export function SupervisorRoleCard({
           </label>
           {collapsedBySameAsPrimary && (
             <label className='space-y-1 text-sm md:col-span-4 lg:col-span-8'>
-              <span className='text-muted'>{config.heading} (resolved)</span>
-              <input className={fieldClass} value={sameAsPrimary.resolveDisplayValue()} disabled />
+              <span className={FORM_LABEL_CLASS}>{config.heading} (resolved)</span>
+              <input className={FORM_CONTROL_CLASS} value={sameAsPrimary.resolveDisplayValue()} disabled />
             </label>
           )}
         </div>
@@ -166,12 +169,12 @@ export function SupervisorRoleCard({
 
       {/* Main card body — hidden when collapsed by same-as-primary */}
       {!collapsedBySameAsPrimary && (
-        <div className={sectionGrid}>
+        <div className={FORM_GRID_CLASS}>
           {/* Internal / External toggle */}
-          <label className='space-y-1 text-sm md:col-span-2 lg:col-span-3'>
+          <label className={`${FORM_FIELD_CLASS} md:col-span-2 lg:col-span-3`}>
             <FieldLabel text={`${config.heading} is UWC-internal`} required />
             <select
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={isInternal}
               onChange={(event) => onIsInternalChange(event.target.value as 'Yes' | 'No')}
             >
@@ -186,7 +189,7 @@ export function SupervisorRoleCard({
               <label className='space-y-1 text-sm md:col-span-4 lg:col-span-9'>
                 <FieldLabel text={config.heading} required />
                 <select
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   value={String(formData[config.internalNameKey])}
                   onChange={(event) => void onInternalSelect(event.target.value)}
                 >
@@ -200,9 +203,9 @@ export function SupervisorRoleCard({
               </label>
               {/* Resolved display */}
               <label className='space-y-1 text-sm md:col-span-3 lg:col-span-6'>
-                <span className='text-muted'>{config.heading} (resolved)</span>
+                <span className={FORM_LABEL_CLASS}>{config.heading} (resolved)</span>
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   value={resolveInternalDisplayName(
                     String(formData[config.internalNameKey]),
                     config.directory,
@@ -212,9 +215,9 @@ export function SupervisorRoleCard({
               </label>
               {/* Qualifications read-only */}
               <label className='space-y-1 text-sm md:col-span-3 lg:col-span-6'>
-                <span className='text-muted'>{config.heading} Qualifications</span>
+                <span className={FORM_LABEL_CLASS}>{config.heading} Qualifications</span>
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   value={String(formData[config.qualificationKey])}
                   disabled
                 />
@@ -237,7 +240,7 @@ export function SupervisorRoleCard({
               <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
                 <FieldLabel text='Title' required />
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   placeholder='e.g., Prof / Dr / Mr / Ms'
                   value={externalTitle}
                   onChange={(event) =>
@@ -250,7 +253,7 @@ export function SupervisorRoleCard({
               <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
                 <FieldLabel text='First Name' required />
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   placeholder='Enter first/given name'
                   value={externalFirstName}
                   onChange={(event) =>
@@ -263,7 +266,7 @@ export function SupervisorRoleCard({
               <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
                 <FieldLabel text='Surname' required />
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   placeholder='Enter surname/family name'
                   value={externalSurname}
                   onChange={(event) =>
@@ -274,13 +277,13 @@ export function SupervisorRoleCard({
                 />
               </label>
               <label className='space-y-1 text-sm md:col-span-3 lg:col-span-6'>
-                <span className='text-muted'>Resolved Name</span>
-                <input className={fieldClass} value={resolvedExternalName} disabled />
+                <span className={FORM_LABEL_CLASS}>Resolved Name</span>
+                <input className={FORM_CONTROL_CLASS} value={resolvedExternalName} disabled />
               </label>
               <label className='space-y-1 text-sm md:col-span-3 lg:col-span-6'>
                 <FieldLabel text='Email' required />
                 <input
-                  className={fieldClass}
+                  className={FORM_CONTROL_CLASS}
                   placeholder='name@institution.edu'
                   value={externalEmail}
                   onChange={(event) =>

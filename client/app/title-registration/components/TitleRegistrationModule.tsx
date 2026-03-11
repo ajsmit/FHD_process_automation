@@ -4,6 +4,11 @@ import { FileText, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DecisionDropdown } from '@/components/ui/dropdown';
+import {
+  FORM_CONTROL_CLASS,
+  FORM_GRID_CLASS,
+  FORM_TEXTAREA_CLASS,
+} from '@/components/ui/formFieldStyles';
 import type {
   ExternalAcademicDirectory,
   ExternalInviteStatus,
@@ -56,10 +61,6 @@ interface TitleRegistrationModuleProps {
   setComments: (value: string) => void;
   inviteStatusByRole: Record<ExternalRole, ExternalInviteStatus | null>;
 }
-
-const fieldClass = 'w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2';
-const areaClass = 'min-h-20 w-full rounded-xl border border-white/10 bg-surface2 px-3 py-2';
-const sectionGrid = 'grid grid-cols-1 gap-3 md:grid-cols-6 lg:grid-cols-12';
 
 const plannedFormatLabels = [
   'PhD by traditional thesis format',
@@ -227,7 +228,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
       {/* Student Details */}
       <Card>
         <h3 className='mb-3 text-sm font-bold'>Student Details</h3>
-        <div className={sectionGrid}>
+        <div className={FORM_GRID_CLASS}>
           {(
             [
               'Student Title',
@@ -244,13 +245,13 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
           ).map((label) => (
             <label key={label} className='space-y-1 text-sm md:col-span-3 lg:col-span-3'>
               <span className='text-muted'>{label}</span>
-              <input className={fieldClass} value={String(formData[label])} disabled />
+              <input className={FORM_CONTROL_CLASS} value={String(formData[label])} disabled />
             </label>
           ))}
           <label className='space-y-1 text-sm md:col-span-6 lg:col-span-6'>
             <span className='text-muted'>Planned format (select one)</span>
             <select
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={selectedPlannedFormat}
               onChange={(event) => {
                 const label = event.target.value as (typeof plannedFormatLabels)[number] | '';
@@ -277,11 +278,11 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
       {/* Thesis Details */}
       <Card>
         <h3 className='mb-3 text-sm font-bold'>Thesis Details</h3>
-        <div className={sectionGrid}>
+        <div className={FORM_GRID_CLASS}>
           <label className='space-y-1 text-sm md:col-span-6 lg:col-span-12'>
             <span className='text-muted'>Thesis title</span>
             <textarea
-              className={areaClass}
+              className={FORM_TEXTAREA_CLASS}
               value={formData['Thesis title']}
               onChange={(event) => void saveField('Thesis title', event.target.value)}
             />
@@ -289,7 +290,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
           <label className='space-y-1 text-sm md:col-span-6 lg:col-span-12'>
             <span className='text-muted'>Key words</span>
             <input
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['Key words']}
               onChange={(event) => void saveField('Key words', event.target.value)}
             />
@@ -308,7 +309,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
               Initial thesis title for upgrade from Masters to Doctoral
             </span>
             <input
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['Initial thesis title for upgrade from Masters to Doctoral']}
               onChange={(event) =>
                 void saveField(
@@ -323,7 +324,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
               PhD project proposal upload/link (5-10 pages incl. timeframes)
             </span>
             <input
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['PhD proposal link (5-10 pages incl. timeframes)']}
               onChange={(event) =>
                 void saveField(
@@ -339,11 +340,11 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
       {/* Ethics */}
       <Card>
         <h3 className='mb-3 text-sm font-bold'>Ethics</h3>
-        <div className={sectionGrid}>
+        <div className={FORM_GRID_CLASS}>
           <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
             <span className='text-muted'>Does this project need Ethics clearance?</span>
             <select
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['Does this project need Ethics clearance?']}
               onChange={(event) =>
                 void saveField('Does this project need Ethics clearance?', event.target.value)
@@ -356,7 +357,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
           <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
             <span className='text-muted'>Ethics clearance reference number</span>
             <input
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['Ethics clearance reference number']}
               onChange={(event) =>
                 void saveField('Ethics clearance reference number', event.target.value)
@@ -366,7 +367,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
           <label className='space-y-1 text-sm md:col-span-2 lg:col-span-4'>
             <span className='text-muted'>Date on which ethics clearance was issued</span>
             <input
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={formData['Date on which ethics clearance was issued']}
               onChange={(event) =>
                 void saveField('Date on which ethics clearance was issued', event.target.value)
@@ -382,7 +383,7 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
         <label className='space-y-1 text-sm'>
           <span className='text-muted'>Has the MOU been submitted?</span>
           <input
-            className={fieldClass}
+            className={FORM_CONTROL_CLASS}
             value={formData['Has the MOU been submitted?']}
             disabled
           />
@@ -463,11 +464,11 @@ export function TitleRegistrationModule(props: TitleRegistrationModuleProps) {
         <h3 className='mb-3 flex items-center gap-2 text-sm font-bold'>
           <UsersRound size={14} className='text-accent' /> Co-supervisor Details
         </h3>
-        <div className={sectionGrid}>
+        <div className={FORM_GRID_CLASS}>
           <label className='space-y-1 text-sm md:col-span-2 lg:col-span-3'>
             <FieldLabel text='Number of Co-supervisors' required />
             <select
-              className={fieldClass}
+              className={FORM_CONTROL_CLASS}
               value={String(coCount)}
               onChange={(event) =>
                 void setCoSupervisorCount(Number(event.target.value) as 0 | 1 | 2)

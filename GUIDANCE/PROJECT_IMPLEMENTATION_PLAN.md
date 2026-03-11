@@ -90,9 +90,18 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - refactored remaining role-branch review routing in `useDashboardPhaseBModules.ts` to role-handler maps for symmetric supervisor/dept/chair/faculty dispatch.
   - refactored external academic role lookup dispatch in `useDashboardCoreCase.ts` to role-map patch/persist wiring for supervisor/admin/co1/co2 parity.
   - validated with `npm --prefix client run build` and `npm --prefix server test`.
+- UI consistency pass across active forms completed:
+  - introduced shared form style contract in `client/components/ui/formFieldStyles.ts` and reused it across dashboard and ROTT form components.
+  - standardized control styling/label treatment in active form surfaces:
+    - `client/app/dashboard/components/WorkflowSupportPanels.tsx`
+    - `client/app/dashboard/components/moduleFieldRenderers.tsx`
+    - `client/app/title-registration/components/TitleRegistrationModule.tsx`
+    - `client/app/title-registration/components/SupervisorRoleCard.tsx`
+    - `client/app/title-registration/components/ExternalRegistryLookup.tsx`
+    - `client/app/title-registration/components/ExternalInviteModal.tsx`
+  - aligned form container/control contrast in supervisor profile cards to match active module form conventions.
 
 ### 2.2 In progress
-- Extended UI consistency rollout (same layout contract across all active forms)
 - Documentation synchronization across all guidance/policy artifacts
 - Post-AD-001 decomposition:
   - split remaining multi-domain orchestration into bounded services
@@ -137,7 +146,7 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 ## 4. Current Roadmap
 ### Phase A (stabilize current wave)
 - Completed 2026-03-11: supervisor-role refactor pass.
-- Finish UI consistency pass across all active forms.
+- Completed 2026-03-11: UI consistency pass across all active forms.
 - Add regression checks for:
   - save/prefill coherence
   - invite completion synchronization
