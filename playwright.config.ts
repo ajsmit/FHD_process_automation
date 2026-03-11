@@ -34,6 +34,8 @@ export default defineConfig({
         ENABLE_DEV_AUTH: 'true',
         DB_CLIENT: 'sqlite3',
         SQLITE_FILE: './dev.sqlite3',
+        AUTH_RATE_LIMIT_WINDOW_MS: '60000',
+        AUTH_RATE_LIMIT_MAX_REQUESTS: '500',
       },
     },
     {

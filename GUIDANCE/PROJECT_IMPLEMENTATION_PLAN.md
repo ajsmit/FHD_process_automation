@@ -86,6 +86,13 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - extracted shared panel helpers (`workflowModulePanelTypes.ts`, `moduleFieldRenderers.tsx`, `moduleActionButtons.tsx`)
   - refactored module loading to `moduleLoaders` dispatch map in `useDashboardOrchestration.ts`
   - enforced CI size guardrails for page/hook/panel/helper files (`scripts/check-dashboard-sizes.sh`)
+- Post-AD-001 decomposition completed:
+  - retained `titleRegistrationWorkflowService.ts` as thin composition façade over bounded services:
+    - `server/src/services/rottCaseService.ts`
+    - `server/src/services/supervisorProfileService.ts`
+    - `server/src/services/mouService.ts`
+    - `server/src/services/operationsFeedService.ts`
+  - added CI-enforced service-boundary guardrail (`scripts/check-service-boundaries.sh`) to prevent façade re-monolithization.
 - Supervisor-role refactor pass completed:
   - refactored remaining role-branch review routing in `useDashboardPhaseBModules.ts` to role-handler maps for symmetric supervisor/dept/chair/faculty dispatch.
   - refactored external academic role lookup dispatch in `useDashboardCoreCase.ts` to role-map patch/persist wiring for supervisor/admin/co1/co2 parity.
@@ -106,27 +113,24 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - external invite completion synchronization into canonical case form fields,
     - PDF regeneration parity signal against persisted DB form-state changes.
   - validated in `server` test suite (`npm --prefix server test`).
+- Phase-B next-wave modules baseline implementation completed:
+  - completed baseline module surfaces and orchestration for:
+    - `INTENTION_TO_SUBMIT`
+    - `APPOINT_EXAMINERS`
+    - `CHANGE_TITLE`
+    - `CHANGE_SUPERVISOR`
+    - `ADD_CO_SUPERVISOR`
+    - `CHANGE_EXAMINERS`
+    - `EXAMINER_SUMMARY_CV`
+    - `APPOINT_ARBITER`
+  - verified role-scoped state-machine routes and module cards remain wired to canonical service endpoints.
+  - extended E2E/UI coverage (`e2e/phaseb-modules.spec.ts`) for:
+    - module panel/status rendering on active baseline tabs,
+    - explicit prerequisite guard behavior for blocked next-wave modules,
+    - UI stability when opening blocked module tabs.
 
 ### 2.2 In progress
 - Documentation synchronization across all guidance/policy artifacts
-- Post-AD-001 decomposition:
-  - split remaining multi-domain orchestration into bounded services
-  - operations/feed domain extracted to `server/src/services/operationsFeedService.ts`
-  - `titleRegistrationWorkflowService.ts` converted to thin composition façade with bounded service entrypoints:
-    - `server/src/services/rottCaseService.ts`
-    - `server/src/services/supervisorProfileService.ts`
-    - `server/src/services/mouService.ts`
-- Phase-B next-wave modules baseline implementation:
-  - `INTENTION_TO_SUBMIT`
-  - `APPOINT_EXAMINERS`
-  - `CHANGE_TITLE`
-  - `CHANGE_SUPERVISOR`
-  - `ADD_CO_SUPERVISOR`
-  - `CHANGE_EXAMINERS`
-  - `EXAMINER_SUMMARY_CV`
-  - `APPOINT_ARBITER`
-  - implemented with canonical tables + prefill + prerequisite gates + save/submit/review/print endpoints + UI cards
-  - now extended with role-scoped approval state machines and printable PDF generation per module
 - AD-013 migration-first schema tranche:
   - introduced consolidated schema migration `server/src/db/migrations/20260310152000_consolidate_workflow_schema.ts`
   - reduced `server/src/db/initDb.ts` to migration runner + idempotent seed orchestration
@@ -199,3 +203,5 @@ Exit criteria:
 8. Completed 2026-03-10 (AD-010): eliminated client/server DTO enum drift by moving shared workflow contract types to `@fhd/common-types` and wiring both server/client to the shared canonical source.
 9. Completed 2026-03-10 (AD-007): finalized service-boundary decomposition with `rottCaseService`, `mouService`, and `supervisorProfileService`, leaving `titleRegistrationWorkflowService.ts` as composition façade.
 10. Completed 2026-03-11: finalized supervisor-role symmetry refactor in dashboard hook wiring (`useDashboardPhaseBModules.ts`, `useDashboardCoreCase.ts`) and validated with full server tests plus client production build.
+11. Completed 2026-03-11: closed Post-AD-001 decomposition stream by adding CI service-boundary guardrails (`scripts/check-service-boundaries.sh`) and wiring them into `.github/workflows/main.yml`.
+12. Completed 2026-03-11: closed Phase-B next-wave modules baseline stream and extended E2E/UI regressions with prerequisite-guard and panel-telemetry coverage (`e2e/phaseb-modules.spec.ts`).

@@ -21,6 +21,11 @@ Covered scenarios:
 - Co-supervisor count edge guard rejects invalid direct jump from 0 to 2.
 - External invite completion synchronizes invite status and case form data.
 - External invite page handles invalid token and invalid SA ID validation.
+- Phase-B next-wave module regressions:
+  - INTENTION_TO_SUBMIT panel/status telemetry load checks.
+  - APPOINT_EXAMINERS / CHANGE_EXAMINERS / EXAMINER_SUMMARY_CV / APPOINT_ARBITER prerequisite-guard API assertions.
+  - UI stability checks while opening blocked Phase-B module tabs.
+  - CHANGE_TITLE / CHANGE_SUPERVISOR / ADD_CO_SUPERVISOR panel/status load checks.
 
 ## Design Principles Applied
 - Prefer stable selectors (`role`, `label`, heading-scoped sections) over brittle text snapshots.
@@ -38,6 +43,7 @@ Current runtime characteristics:
 - Local web servers auto-started for client/server.
 - Artifacts retained on failure (`trace`, `video`, `screenshot`).
 - `reuseExistingServer: false` to avoid accidental reuse of misconfigured local processes.
+- elevated auth test rate-limit allowance in Playwright server env (`AUTH_RATE_LIMIT_MAX_REQUESTS=500`) to avoid false negatives from frequent dev-login calls during suite execution.
 
 ## Commands
 - UI E2E only:
