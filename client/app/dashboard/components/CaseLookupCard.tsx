@@ -30,8 +30,11 @@ export function CaseLookupCard({
       <div className='grid gap-3 md:grid-cols-[1fr_auto] md:items-center'>
         <SearchInput
           value={studentNumber}
-          onChange={(event) => onStudentNumberChange(event.target.value)}
+          onChange={(event) => onStudentNumberChange(event.target.value.replace(/\D/g, '').slice(0, 7))}
           placeholder='Enter SASI student number (e.g. 1234567)'
+          inputMode='numeric'
+          maxLength={7}
+          pattern='\d{7}'
         />
         <Button disabled={loading} onClick={onCheckSasi}>
           Check SASI

@@ -362,6 +362,8 @@ const demoActorSasiIds = {
 } as const;
 
 const tokenCacheByActor = new Map<string, string>();
+let activeStudentActorSasiId: string = demoActorSasiIds.student;
+const SASI_STUDENT_NUMBER_PATTERN = /^\d{7}$/;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const bases = candidateApiBases();
@@ -427,6 +429,10 @@ async function authHeadersForActor(actorSasiId: string): Promise<Record<string, 
   return { Authorization: `Bearer ${token}` };
 }
 
+async function studentAuthHeaders(): Promise<Record<string, string>> {
+  return authHeadersForActor(activeStudentActorSasiId);
+}
+
 export async function checkSasi(studentNumber: string): Promise<{
   eligible: boolean;
   reasons: string[];
@@ -434,22 +440,29 @@ export async function checkSasi(studentNumber: string): Promise<{
   caseRecord?: TitleRegistrationCase;
   formData?: FormData;
 }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const normalizedStudentNumber = studentNumber.trim();
+  if (!SASI_STUDENT_NUMBER_PATTERN.test(normalizedStudentNumber)) {
+    throw new Error('SASI student number must be exactly 7 digits.');
+  }
+  if (normalizedStudentNumber) {
+    activeStudentActorSasiId = normalizedStudentNumber;
+  }
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/sasi/${studentNumber}/check`, { headers });
 }
 
 export async function patchForm(caseId: number, patch: Partial<FormData>): Promise<{ case: TitleRegistrationCase; formData: FormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/form`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function generatePrintPdf(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/print`, { method: 'POST', headers });
 }
 
 export async function studentVet(caseId: number): Promise<{ case: TitleRegistrationCase }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/student-vet`, {
     method: 'POST',
     headers,
@@ -509,38 +522,38 @@ export async function sendReminder(caseId: number): Promise<{ sent: boolean; rea
 }
 
 export async function getPipeline(): Promise<{ data: Array<Record<string, unknown>> }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request('/title-registration/pipeline', { headers });
 }
 
 export async function getTasks(): Promise<{ data: Array<Record<string, unknown>> }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request('/title-registration/tasks', { headers });
 }
 
 export async function getToDo(): Promise<{ data: Array<Record<string, unknown>> }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request('/title-registration/to-do', { headers });
 }
 
 export async function getPeople(): Promise<{ data: Array<Record<string, unknown>> }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request('/title-registration/people', { headers });
 }
 
 export async function getNotifications(caseId?: number): Promise<{ data: Array<Record<string, unknown>> }> {
   const query = typeof caseId === 'number' ? `?caseId=${caseId}` : '';
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/notifications${query}`, { headers });
 }
 
 export async function getSupervisorProfiles(caseId: number): Promise<{ data: SupervisorProfileForm[] }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/supervisor-profiles`, { headers });
 }
 
 export async function getExternalInviteStatuses(caseId: number): Promise<{ data: ExternalInviteStatus[] }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/external-invites`, { headers });
 }
 
@@ -568,7 +581,7 @@ export async function submitSupervisorProfile(profileId: number): Promise<{ prof
 }
 
 export async function requestSupervisorProfiles(caseId: number): Promise<{ requested: number }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/supervisor-profiles/request`, { method: 'POST', headers });
 }
 
@@ -586,27 +599,27 @@ export async function uploadSupervisorProfileCv(
 }
 
 export async function getMou(caseId: number): Promise<{ record: MouFormRecord; formData: MouFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/mou`, { headers });
 }
 
 export async function patchMou(caseId: number, patch: Partial<MouFormData>): Promise<{ record: MouFormRecord; formData: MouFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/mou`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function completeMou(caseId: number): Promise<{ record: MouFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/mou/complete`, { method: 'POST', headers });
 }
 
 export async function printMou(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/mou/print`, { method: 'POST', headers });
 }
 
 export async function getIntentionToSubmit(caseId: number): Promise<{ record: ModuleFormRecord; formData: IntentionToSubmitFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/intention-to-submit`, { headers });
 }
 
@@ -614,12 +627,12 @@ export async function patchIntentionToSubmit(
   caseId: number,
   patch: Partial<IntentionToSubmitFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: IntentionToSubmitFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/intention-to-submit`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitIntentionToSubmit(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/intention-to-submit/submit`, { method: 'POST', headers });
 }
 
@@ -642,12 +655,12 @@ export async function reviewIntentionToSubmitByDept(caseId: number, decision: Mo
 }
 
 export async function printIntentionToSubmit(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/intention-to-submit/print`, { method: 'POST', headers });
 }
 
 export async function getAppointExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointExaminersFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/appoint-examiners`, { headers });
 }
 
@@ -697,7 +710,7 @@ export async function printAppointExaminers(caseId: number): Promise<{ pdfPath: 
 }
 
 export async function getChangeExaminers(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeExaminersFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-examiners`, { headers });
 }
 
@@ -747,7 +760,7 @@ export async function printChangeExaminers(caseId: number): Promise<{ pdfPath: s
 }
 
 export async function getExaminerSummaryCv(caseId: number): Promise<{ record: ModuleFormRecord; formData: ExaminerSummaryCvFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/examiner-summary-cv`, { headers });
 }
 
@@ -788,7 +801,7 @@ export async function printExaminerSummaryCv(caseId: number): Promise<{ pdfPath:
 }
 
 export async function getAppointArbiter(caseId: number): Promise<{ record: ModuleFormRecord; formData: AppointArbiterFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/appoint-arbiter`, { headers });
 }
 
@@ -829,17 +842,17 @@ export async function printAppointArbiter(caseId: number): Promise<{ pdfPath: st
 }
 
 export async function getChangeTitle(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeTitleFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-title`, { headers });
 }
 
 export async function patchChangeTitle(caseId: number, patch: Partial<ChangeTitleFormData>): Promise<{ record: ModuleFormRecord; formData: ChangeTitleFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-title`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitChangeTitle(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-title/submit`, { method: 'POST', headers });
 }
 
@@ -864,12 +877,12 @@ export async function reviewChangeTitleByFaculty(caseId: number, decision: Modul
 }
 
 export async function printChangeTitle(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-title/print`, { method: 'POST', headers });
 }
 
 export async function getChangeSupervisor(caseId: number): Promise<{ record: ModuleFormRecord; formData: ChangeSupervisorFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-supervisor`, { headers });
 }
 
@@ -877,12 +890,12 @@ export async function patchChangeSupervisor(
   caseId: number,
   patch: Partial<ChangeSupervisorFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ChangeSupervisorFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-supervisor`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitChangeSupervisor(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-supervisor/submit`, { method: 'POST', headers });
 }
 
@@ -907,22 +920,22 @@ export async function reviewChangeSupervisorByFaculty(caseId: number, decision: 
 }
 
 export async function printChangeSupervisor(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/change-supervisor/print`, { method: 'POST', headers });
 }
 
 export async function getAddCoSupervisor(caseId: number): Promise<{ record: ModuleFormRecord; formData: AddCoSupervisorFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/add-co-supervisor`, { headers });
 }
 
 export async function patchAddCoSupervisor(caseId: number, patch: Partial<AddCoSupervisorFormData>): Promise<{ record: ModuleFormRecord; formData: AddCoSupervisorFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/add-co-supervisor`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitAddCoSupervisor(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/add-co-supervisor/submit`, { method: 'POST', headers });
 }
 
@@ -947,12 +960,12 @@ export async function reviewAddCoSupervisorByFaculty(caseId: number, decision: M
 }
 
 export async function printAddCoSupervisor(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/add-co-supervisor/print`, { method: 'POST', headers });
 }
 
 export async function getProgressReport(caseId: number): Promise<{ record: ModuleFormRecord; formData: ProgressReportFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/progress-report`, { headers });
 }
 
@@ -960,12 +973,12 @@ export async function patchProgressReport(
   caseId: number,
   patch: Partial<ProgressReportFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ProgressReportFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/progress-report`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitProgressReport(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/progress-report/submit`, { method: 'POST', headers });
 }
 
@@ -980,12 +993,12 @@ export async function reviewProgressReportByFaculty(caseId: number, decision: Mo
 }
 
 export async function printProgressReport(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/progress-report/print`, { method: 'POST', headers });
 }
 
 export async function getLeaveOfAbsence(caseId: number): Promise<{ record: ModuleFormRecord; formData: LeaveOfAbsenceFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/leave-of-absence`, { headers });
 }
 
@@ -993,12 +1006,12 @@ export async function patchLeaveOfAbsence(
   caseId: number,
   patch: Partial<LeaveOfAbsenceFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: LeaveOfAbsenceFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/leave-of-absence`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitLeaveOfAbsence(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/leave-of-absence/submit`, { method: 'POST', headers });
 }
 
@@ -1013,12 +1026,12 @@ export async function reviewLeaveOfAbsenceByFaculty(caseId: number, decision: Mo
 }
 
 export async function printLeaveOfAbsence(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/leave-of-absence/print`, { method: 'POST', headers });
 }
 
 export async function getReadmissionRequest(caseId: number): Promise<{ record: ModuleFormRecord; formData: ReadmissionRequestFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/readmission-request`, { headers });
 }
 
@@ -1026,12 +1039,12 @@ export async function patchReadmissionRequest(
   caseId: number,
   patch: Partial<ReadmissionRequestFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: ReadmissionRequestFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/readmission-request`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitReadmissionRequest(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/readmission-request/submit`, { method: 'POST', headers });
 }
 
@@ -1046,12 +1059,12 @@ export async function reviewReadmissionRequestByFaculty(caseId: number, decision
 }
 
 export async function printReadmissionRequest(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/readmission-request/print`, { method: 'POST', headers });
 }
 
 export async function getUpgradeMscToPhd(caseId: number): Promise<{ record: ModuleFormRecord; formData: UpgradeMscToPhdFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/upgrade-msc-to-phd`, { headers });
 }
 
@@ -1059,12 +1072,12 @@ export async function patchUpgradeMscToPhd(
   caseId: number,
   patch: Partial<UpgradeMscToPhdFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: UpgradeMscToPhdFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/upgrade-msc-to-phd`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitUpgradeMscToPhd(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/upgrade-msc-to-phd/submit`, { method: 'POST', headers });
 }
 
@@ -1079,12 +1092,12 @@ export async function reviewUpgradeMscToPhdByFaculty(caseId: number, decision: M
 }
 
 export async function printUpgradeMscToPhd(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/upgrade-msc-to-phd/print`, { method: 'POST', headers });
 }
 
 export async function getSupervisorSummativeReport(caseId: number): Promise<{ record: ModuleFormRecord; formData: SupervisorSummativeReportFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/supervisor-summative-report`, { headers });
 }
 
@@ -1112,12 +1125,12 @@ export async function reviewSupervisorSummativeReportByFaculty(caseId: number, d
 }
 
 export async function printSupervisorSummativeReport(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/supervisor-summative-report/print`, { method: 'POST', headers });
 }
 
 export async function getOtherRequest(caseId: number): Promise<{ record: ModuleFormRecord; formData: OtherRequestFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/other-request`, { headers });
 }
 
@@ -1125,12 +1138,12 @@ export async function patchOtherRequest(
   caseId: number,
   patch: Partial<OtherRequestFormData>,
 ): Promise<{ record: ModuleFormRecord; formData: OtherRequestFormData }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/other-request`, { method: 'PATCH', headers, body: JSON.stringify(patch) });
 }
 
 export async function submitOtherRequest(caseId: number): Promise<{ record: ModuleFormRecord }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/other-request/submit`, { method: 'POST', headers });
 }
 
@@ -1145,7 +1158,7 @@ export async function reviewOtherRequestByFaculty(caseId: number, decision: Modu
 }
 
 export async function printOtherRequest(caseId: number): Promise<{ pdfPath: string }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request(`/title-registration/cases/${caseId}/other-request/print`, { method: 'POST', headers });
 }
 
@@ -1189,7 +1202,7 @@ export async function createExternalAcademicInvite(
   role: 'supervisor' | 'admin' | 'co1' | 'co2',
   email: string,
 ): Promise<{ inviteId: number; token: string; inviteLink: string; expiresAt: string; deliveryStatus: 'sent' | 'queued' | 'failed' }> {
-  const headers = await authHeadersForActor(demoActorSasiIds.student);
+  const headers = await studentAuthHeaders();
   return request('/directory/external-academics/invite', {
     method: 'POST',
     headers,

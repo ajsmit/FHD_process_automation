@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'npm --prefix server run dev',
+      command: 'rm -f server/dev.sqlite3 && npm --prefix server run dev',
       port: 3001,
       reuseExistingServer: false,
       timeout: 120_000,

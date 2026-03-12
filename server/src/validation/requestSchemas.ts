@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const nonEmptyString = z.string().trim().min(1);
+const sasiStudentNumber = z.string().trim().regex(/^\d{7}$/, { message: 'studentNumber must be exactly 7 digits.' });
 
 export const caseIdParamSchema = z.object({
   caseId: z.string().regex(/^\d+$/, { message: 'caseId must be a positive integer string.' }),
@@ -15,7 +16,7 @@ export const idParamSchema = z.object({
 });
 
 export const studentNumberParamSchema = z.object({
-  studentNumber: nonEmptyString.max(64),
+  studentNumber: sasiStudentNumber,
 });
 
 export const tokenParamSchema = z.object({
@@ -63,7 +64,7 @@ export const directoryQuerySchema = z.object({
 });
 
 export const sasiSearchQuerySchema = z.object({
-  studentNumber: z.string().trim().min(1).max(64).optional(),
+  studentNumber: sasiStudentNumber.optional(),
   firstName: z.string().trim().min(1).max(128).optional(),
   lastName: z.string().trim().min(1).max(128).optional(),
 }).refine((value) => Boolean(value.studentNumber || value.firstName || value.lastName), {
@@ -109,7 +110,7 @@ export const externalInviteCompleteBodySchema = z.object({
 });
 
 export const phase1TitleRegistrationBodySchema = z.object({
-  studentNumber: nonEmptyString.max(64),
+  studentNumber: sasiStudentNumber,
   proposedTitle: nonEmptyString.max(500),
   abstract: z.string().max(8000).optional(),
 });

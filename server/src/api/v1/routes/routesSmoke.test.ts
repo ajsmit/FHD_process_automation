@@ -98,3 +98,12 @@ test('GET /api/v1/title-registration/pipeline returns 400 for invalid caseId que
   assert.equal(res.status, 400);
   assert.equal(res.body.message, 'Invalid query parameters.');
 });
+
+test('GET /api/v1/title-registration/sasi/:studentNumber/check returns 400 for non-7-digit student number', async () => {
+  const app = makeApp();
+  const res = await request(app)
+    .get('/api/v1/title-registration/sasi/12345678/check')
+    .set('authorization', makeBearer('student'));
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'Invalid route parameters.');
+});
