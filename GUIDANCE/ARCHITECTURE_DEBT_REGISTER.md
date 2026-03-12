@@ -1,6 +1,6 @@
 # Architecture Debt Register
 
-Version: 2026-03-11
+Version: 2026-03-12
 Status: Active
 Purpose: Track structural debt that affects maintainability, refactor planning, and release risk.
 

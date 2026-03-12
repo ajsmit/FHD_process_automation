@@ -200,6 +200,11 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 ### 2.3 Next Iteration (tomorrow)
 - None (closed on 2026-03-12): all remaining progression/change forms from `ridiculous_forms` are now baseline-implemented on server lifecycle routes with regression coverage.
 
+### 2.4 Next Iteration (this morning)
+- Phase-C hardening and parity closure for newly implemented progression/exception modules.
+- Execution set is defined in:
+  - [NEXT_ITERATION_EXECUTION_SET_2026-03-12.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-12.md)
+
 ## 3. Execution Guardrails
 1. Follow policy and mapping owners before implementation:
 - [POLICY_RULEBOOK.md](./POLICY_RULEBOOK.md)
@@ -264,3 +269,4 @@ Exit criteria:
 10. Completed 2026-03-11: finalized supervisor-role symmetry refactor in dashboard hook wiring (`useDashboardPhaseBModules.ts`, `useDashboardCoreCase.ts`) and validated with full server tests plus client production build.
 11. Completed 2026-03-11: closed Post-AD-001 decomposition stream by adding CI service-boundary guardrails (`scripts/check-service-boundaries.sh`) and wiring them into `.github/workflows/main.yml`.
 12. Completed 2026-03-11: closed Phase-B next-wave modules baseline stream and extended E2E/UI regressions with prerequisite-guard and panel-telemetry coverage (`e2e/phaseb-modules.spec.ts`).
+13. Planned 2026-03-12 morning: execute Phase-C hardening queue per [NEXT_ITERATION_EXECUTION_SET_2026-03-12.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-12.md) (policy gate parity, operational feed parity, UI transactional regressions, doc+contract sync).
