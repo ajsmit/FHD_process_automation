@@ -1,5 +1,6 @@
 import { ChangeRequestModulePanels } from './ChangeRequestModulePanels';
 import { PhaseBModulePanels } from './PhaseBModulePanels';
+import { ProgressionModulePanels } from './ProgressionModulePanels';
 import type { WorkflowModulePanelsProps } from './workflowModulePanelTypes';
 
 export function WorkflowModulePanels(props: WorkflowModulePanelsProps) {
@@ -7,6 +8,7 @@ export function WorkflowModulePanels(props: WorkflowModulePanelsProps) {
     <>
       <PhaseBModulePanels {...props} />
       <ChangeRequestModulePanels {...props} />
+      <ProgressionModulePanels {...props} />
     </>
   );
 }

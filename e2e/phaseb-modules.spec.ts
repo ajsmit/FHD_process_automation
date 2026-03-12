@@ -57,7 +57,7 @@ async function expectModulePanel(page: Page, moduleKey: string, heading: string)
   await expect(page.getByText(/^Status:/)).toBeVisible();
 }
 
-test.describe('Phase-B Module UI Regressions', () => {
+test.describe('Workflow Module UI Regressions', () => {
   test('INTENTION_TO_SUBMIT panel exposes status telemetry', async ({ page, request }) => {
     const token = await devLogin(request, DEMO_STUDENT_SASI_ID);
     await ensureCaseExists(request, token);
@@ -68,7 +68,7 @@ test.describe('Phase-B Module UI Regressions', () => {
     await expect(page.getByText(/^Status:/)).toBeVisible();
   });
 
-  test('next-wave baseline enforces prerequisite guards and keeps UI stable across module tabs', async ({ page, request }) => {
+  test('baseline modules enforce prerequisite guards and keep UI stable across module tabs', async ({ page, request }) => {
     const token = await devLogin(request, DEMO_STUDENT_SASI_ID);
     const caseId = await ensureCaseExists(request, token);
 
@@ -111,5 +111,11 @@ test.describe('Phase-B Module UI Regressions', () => {
     await expectModulePanel(page, 'change_title', 'CHANGE_TITLE Module');
     await expectModulePanel(page, 'change_supervisor', 'CHANGE_SUPERVISOR Module');
     await expectModulePanel(page, 'add_co_supervisor', 'ADD_CO_SUPERVISOR Module');
+    await expectModulePanel(page, 'progress_report', 'PROGRESS_REPORT Module');
+    await expectModulePanel(page, 'leave_of_absence', 'LEAVE_OF_ABSENCE Module');
+    await expectModulePanel(page, 'readmission_request', 'READMISSION_REQUEST Module');
+    await expectModulePanel(page, 'upgrade_msc_to_phd', 'UPGRADE_MSC_TO_PHD Module');
+    await expectModulePanel(page, 'supervisor_summative_report', 'SUPERVISOR_SUMMATIVE_REPORT Module');
+    await expectModulePanel(page, 'other_request', 'OTHER_REQUEST Module');
   });
 });

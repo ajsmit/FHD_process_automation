@@ -29,6 +29,38 @@ import {
   updateChangeSupervisor,
   updateChangeTitle,
 } from './changeRequestModulesService';
+import {
+  getProgressReport,
+  getLeaveOfAbsence,
+  getOtherRequest,
+  getReadmissionRequest,
+  getSupervisorSummativeReport,
+  getUpgradeMscToPhd,
+  patchLeaveOfAbsence,
+  patchOtherRequest,
+  patchReadmissionRequest,
+  patchSupervisorSummativeReport,
+  patchUpgradeMscToPhd,
+  patchProgressReport,
+  reviewLeaveOfAbsenceByDept,
+  reviewLeaveOfAbsenceByFaculty,
+  reviewOtherRequestByDept,
+  reviewOtherRequestByFaculty,
+  reviewReadmissionRequestByDept,
+  reviewReadmissionRequestByFaculty,
+  reviewSupervisorSummativeReportByDept,
+  reviewSupervisorSummativeReportByFaculty,
+  reviewUpgradeMscToPhdByDept,
+  reviewUpgradeMscToPhdByFaculty,
+  reviewProgressReportByDept,
+  reviewProgressReportByFaculty,
+  submitLeaveOfAbsence,
+  submitOtherRequest,
+  submitReadmissionRequest,
+  submitSupervisorSummativeReport,
+  submitUpgradeMscToPhd,
+  submitProgressReport,
+} from './progressionModulesService';
 import { checkAndPrefill, getCaseById, updateForm } from '../titleRegistrationWorkflowService';
 import {
   getOrCreateAppointArbiter,
@@ -599,6 +631,356 @@ test('APPOINT_ARBITER enforces review order and supports rework', async () => {
 
   const approvedEntry = await getModuleEntry(caseId, 'appoint_arbiter');
   assert.equal(approvedEntry?.status, 'approved');
+});
+
+test('PROGRESS_REPORT prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  const initial = await getProgressReport(studentActor, caseId);
+  assert.equal(initial.formData['Student Number'], studentActor.sasiId);
+  assert.match(initial.formData['Student Full Name'], /Integration Case/);
+  assert.equal(initial.formData['Co-supervisor(s)'], 'Albertus Smit');
+  assert.equal(initial.record.status, 'draft');
+
+  await patchProgressReport(studentActor, caseId, {
+    'Reporting period': '2026 Q1',
+    'Research progress summary': 'Completed literature synthesis and baseline methodology validation.',
+    Challenges: 'Data access delays in one external dataset.',
+    'Publication output': 'One draft manuscript in preparation.',
+    'Ethics compliance status': 'Ethics clearance active and conditions met.',
+    'Support required': 'No additional support required at this stage.',
+    'Supervisor comment': 'Progress aligned with expected doctoral trajectory.',
+  });
+
+  let record = await submitProgressReport(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewProgressReportByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewProgressReportByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+
+  const approvedEntry = await getModuleEntry(caseId, 'progress_report');
+  assert.equal(approvedEntry?.status, 'approved');
+  assert.match(approvedEntry?.summary ?? '', /approved/i);
+});
+
+test('PROGRESS_REPORT enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await patchProgressReport(studentActor, caseId, {
+    'Reporting period': '2026 Q2',
+    'Research progress summary': 'Drafted analysis chapters and completed pilot experiments.',
+    'Ethics compliance status': 'Compliant',
+  });
+  await submitProgressReport(studentActor, caseId);
+
+  await assert.rejects(
+    () => reviewProgressReportByFaculty(facultyActor, caseId, 'approved'),
+    /review not allowed from status awaiting_dept_review/i,
+  );
+
+  let record = await reviewProgressReportByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  const returnedEntry = await getModuleEntry(caseId, 'progress_report');
+  assert.equal(returnedEntry?.status, 'action_required');
+  assert.match(returnedEntry?.summary ?? '', /returned by department/i);
+
+  await patchProgressReport(studentActor, caseId, {
+    'Research progress summary': 'Updated report addressing departmental feedback and revised milestones.',
+    'Supervisor comment': 'Feedback incorporated and accepted.',
+  });
+  record = await submitProgressReport(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  await reviewProgressReportByDept(deptActor, caseId, 'approved');
+  record = await reviewProgressReportByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('LEAVE_OF_ABSENCE prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  const initial = await getLeaveOfAbsence(studentActor, caseId);
+  assert.equal(initial.formData['Student Number'], studentActor.sasiId);
+  assert.match(initial.formData['Student Full Name'], /Integration Case/);
+  assert.equal(initial.record.status, 'draft');
+
+  await patchLeaveOfAbsence(studentActor, caseId, {
+    'Leave start date': '2026-06-01',
+    'Leave end date': '2026-09-30',
+    'Reason for leave': 'Temporary medical and family support constraints requiring leave.',
+    'Support plan during leave': 'Monthly supervisor updates and documented return milestones.',
+    'Supervisor recommendation': 'Recommended with clear reintegration timeline.',
+  });
+
+  let record = await submitLeaveOfAbsence(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewLeaveOfAbsenceByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewLeaveOfAbsenceByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+
+  const approvedEntry = await getModuleEntry(caseId, 'leave_of_absence');
+  assert.equal(approvedEntry?.status, 'approved');
+  assert.match(approvedEntry?.summary ?? '', /approved/i);
+});
+
+test('LEAVE_OF_ABSENCE enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await patchLeaveOfAbsence(studentActor, caseId, {
+    'Leave start date': '2026-07-01',
+    'Leave end date': '2026-08-31',
+    'Reason for leave': 'Focused research interruption due to approved external obligations.',
+  });
+  await submitLeaveOfAbsence(studentActor, caseId);
+
+  await assert.rejects(
+    () => reviewLeaveOfAbsenceByFaculty(facultyActor, caseId, 'approved'),
+    /review not allowed from status awaiting_dept_review/i,
+  );
+
+  let record = await reviewLeaveOfAbsenceByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  const returnedEntry = await getModuleEntry(caseId, 'leave_of_absence');
+  assert.equal(returnedEntry?.status, 'action_required');
+  assert.match(returnedEntry?.summary ?? '', /returned by department/i);
+
+  await patchLeaveOfAbsence(studentActor, caseId, {
+    'Reason for leave': 'Updated rationale with departmental-requested documentation references.',
+    'Support plan during leave': 'Structured monthly checkpoints and planned return onboarding.',
+  });
+  record = await submitLeaveOfAbsence(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  await reviewLeaveOfAbsenceByDept(deptActor, caseId, 'approved');
+  record = await reviewLeaveOfAbsenceByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('READMISSION_REQUEST prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  const initial = await getReadmissionRequest(studentActor, caseId);
+  assert.equal(initial.formData['Student Number'], studentActor.sasiId);
+  assert.match(initial.formData['Student Full Name'], /Integration Case/);
+  assert.equal(initial.record.status, 'draft');
+
+  await patchReadmissionRequest(studentActor, caseId, {
+    'Previous leave period': '2026-06-01 to 2026-09-30',
+    'Requested readmission date': '2026-10-15',
+    'Reason for readmission': 'Leave constraints resolved and study conditions restored.',
+    'Academic recovery plan': 'Revised milestone plan with monthly supervisory checkpoints.',
+    'Supervisor recommendation': 'Supports readmission with phased reintegration.',
+  });
+
+  let record = await submitReadmissionRequest(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewReadmissionRequestByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewReadmissionRequestByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+
+  const approvedEntry = await getModuleEntry(caseId, 'readmission_request');
+  assert.equal(approvedEntry?.status, 'approved');
+  assert.match(approvedEntry?.summary ?? '', /approved/i);
+});
+
+test('READMISSION_REQUEST enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await patchReadmissionRequest(studentActor, caseId, {
+    'Requested readmission date': '2026-11-01',
+    'Reason for readmission': 'Student has met preconditions for reinstatement.',
+    'Academic recovery plan': 'Timeline reset with committee-monitored deliverables.',
+  });
+  await submitReadmissionRequest(studentActor, caseId);
+
+  await assert.rejects(
+    () => reviewReadmissionRequestByFaculty(facultyActor, caseId, 'approved'),
+    /review not allowed from status awaiting_dept_review/i,
+  );
+
+  let record = await reviewReadmissionRequestByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  const returnedEntry = await getModuleEntry(caseId, 'readmission_request');
+  assert.equal(returnedEntry?.status, 'action_required');
+  assert.match(returnedEntry?.summary ?? '', /returned by department/i);
+
+  await patchReadmissionRequest(studentActor, caseId, {
+    'Reason for readmission': 'Updated rationale including requested supporting evidence references.',
+  });
+  record = await submitReadmissionRequest(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  await reviewReadmissionRequestByDept(deptActor, caseId, 'approved');
+  record = await reviewReadmissionRequestByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('UPGRADE_MSC_TO_PHD prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  const initial = await getUpgradeMscToPhd(studentActor, caseId);
+  assert.equal(initial.formData['Student Number'], studentActor.sasiId);
+  assert.equal(initial.formData['Requested Upgrade Degree'], 'PhD');
+  assert.equal(initial.record.status, 'draft');
+
+  await patchUpgradeMscToPhd(studentActor, caseId, {
+    'Upgrade motivation': 'Student has produced substantial research outputs at doctoral trajectory level.',
+    'Research progress evidence': 'Completed high-impact milestones and publications supporting upgrade.',
+    'Supervisor recommendation': 'Supervisor supports upgrade based on sustained progress.',
+  });
+
+  let record = await submitUpgradeMscToPhd(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewUpgradeMscToPhdByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewUpgradeMscToPhdByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+
+  const approvedEntry = await getModuleEntry(caseId, 'upgrade_msc_to_phd');
+  assert.equal(approvedEntry?.status, 'approved');
+  assert.match(approvedEntry?.summary ?? '', /approved/i);
+});
+
+test('UPGRADE_MSC_TO_PHD enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await patchUpgradeMscToPhd(studentActor, caseId, {
+    'Upgrade motivation': 'Baseline upgrade rationale for progression.',
+    'Research progress evidence': 'Baseline evidence for doctoral readiness.',
+  });
+  await submitUpgradeMscToPhd(studentActor, caseId);
+
+  await assert.rejects(
+    () => reviewUpgradeMscToPhdByFaculty(facultyActor, caseId, 'approved'),
+    /review not allowed from status awaiting_dept_review/i,
+  );
+
+  let record = await reviewUpgradeMscToPhdByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  await patchUpgradeMscToPhd(studentActor, caseId, {
+    'Research progress evidence': 'Updated evidence after department feedback.',
+  });
+  record = await submitUpgradeMscToPhd(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  await reviewUpgradeMscToPhdByDept(deptActor, caseId, 'approved');
+  record = await reviewUpgradeMscToPhdByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('SUPERVISOR_SUMMATIVE_REPORT supports supervisor-authored full approval path', async () => {
+  const { caseId } = await createFixtureCase();
+
+  const initial = await getSupervisorSummativeReport(supervisorActor, caseId);
+  assert.equal(initial.record.status, 'draft');
+  assert.equal(initial.formData.Supervisor, 'AJ Smit');
+
+  await patchSupervisorSummativeReport(supervisorActor, caseId, {
+    'Summative period': '2026 annual cycle',
+    'Overall progress summary': 'Student maintained expected progress across all objectives.',
+    'Submission readiness assessment': 'Ready for downstream submission milestones.',
+    'Examiner outcomes summary': 'No adverse outcomes pending.',
+    'Supervisor recommendation': 'Recommend progression without reservation.',
+  });
+
+  let record = await submitSupervisorSummativeReport(supervisorActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewSupervisorSummativeReportByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewSupervisorSummativeReportByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('SUPERVISOR_SUMMATIVE_REPORT enforces supervisor edit role and rework loop', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  await assert.rejects(
+    () => patchSupervisorSummativeReport(studentActor, caseId, { 'Summative period': 'attempted student edit' }),
+    /not authorized/i,
+  );
+
+  await patchSupervisorSummativeReport(supervisorActor, caseId, {
+    'Summative period': '2026 cycle',
+    'Overall progress summary': 'Initial summary content.',
+    'Submission readiness assessment': 'Ready',
+    'Supervisor recommendation': 'Proceed',
+  });
+  await submitSupervisorSummativeReport(supervisorActor, caseId);
+
+  let record = await reviewSupervisorSummativeReportByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  await patchSupervisorSummativeReport(supervisorActor, caseId, {
+    'Overall progress summary': 'Updated summary with departmental feedback integrated.',
+  });
+  record = await submitSupervisorSummativeReport(supervisorActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+});
+
+test('OTHER_REQUEST prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  const initial = await getOtherRequest(studentActor, caseId);
+  assert.equal(initial.formData['Student Number'], studentActor.sasiId);
+  assert.equal(initial.record.status, 'draft');
+
+  await patchOtherRequest(studentActor, caseId, {
+    'Request category': 'Administrative exception',
+    'Request details': 'Requesting documented exception with supporting rationale.',
+    'Requested effective date': '2026-12-01',
+    'Impact statement': 'No adverse impact expected on policy compliance.',
+    'Supervisor comment': 'Supervisor acknowledges request context.',
+  });
+
+  let record = await submitOtherRequest(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  record = await reviewOtherRequestByDept(deptActor, caseId, 'approved');
+  assert.equal(record.status, 'awaiting_faculty_review');
+
+  record = await reviewOtherRequestByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
+});
+
+test('OTHER_REQUEST enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await patchOtherRequest(studentActor, caseId, {
+    'Request category': 'Case-specific request',
+    'Request details': 'Initial request details.',
+    'Impact statement': 'Initial impact statement.',
+  });
+  await submitOtherRequest(studentActor, caseId);
+
+  await assert.rejects(
+    () => reviewOtherRequestByFaculty(facultyActor, caseId, 'approved'),
+    /review not allowed from status awaiting_dept_review/i,
+  );
+
+  let record = await reviewOtherRequestByDept(deptActor, caseId, 'returned');
+  assert.equal(record.status, 'returned_by_dept');
+
+  await patchOtherRequest(studentActor, caseId, {
+    'Request details': 'Updated details after department return.',
+  });
+  record = await submitOtherRequest(studentActor, caseId);
+  assert.equal(record.status, 'awaiting_dept_review');
+
+  await reviewOtherRequestByDept(deptActor, caseId, 'approved');
+  record = await reviewOtherRequestByFaculty(facultyActor, caseId, 'approved');
+  assert.equal(record.status, 'approved');
 });
 
 test('provider-login succeeds in trusted_header mode with trusted source and valid secret', async () => {

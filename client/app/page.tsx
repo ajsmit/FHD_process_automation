@@ -25,6 +25,12 @@ const modules = [
   'change_examiners',
   'examiner_summary_cv',
   'appoint_arbiter',
+  'progress_report',
+  'leave_of_absence',
+  'readmission_request',
+  'upgrade_msc_to_phd',
+  'supervisor_summative_report',
+  'other_request',
   'pipeline',
   'tasks',
   'people',
@@ -103,6 +109,24 @@ export default function Page() {
     arbiterRecord,
     arbiterData,
     arbiterPdfPath,
+    progressReportRecord,
+    progressReportData,
+    progressReportPdfPath,
+    leaveRecord,
+    leaveData,
+    leavePdfPath,
+    readmissionRecord,
+    readmissionData,
+    readmissionPdfPath,
+    upgradeRecord,
+    upgradeData,
+    upgradePdfPath,
+    summativeRecord,
+    summativeData,
+    summativePdfPath,
+    otherRequestRecord,
+    otherRequestData,
+    otherRequestPdfPath,
     notifications,
     decision,
     setDecision,
@@ -185,6 +209,30 @@ export default function Page() {
     submitArbiterModule,
     reviewArbiterModule,
     handlePrintArbiter,
+    saveProgressReportField,
+    submitProgressReportModule,
+    reviewProgressReportModule,
+    handlePrintProgressReport,
+    saveLeaveField,
+    submitLeaveModule,
+    reviewLeaveModule,
+    handlePrintLeave,
+    saveReadmissionField,
+    submitReadmissionModule,
+    reviewReadmissionModule,
+    handlePrintReadmission,
+    saveUpgradeField,
+    submitUpgradeModule,
+    reviewUpgradeModule,
+    handlePrintUpgrade,
+    saveSummativeField,
+    submitSummativeModule,
+    reviewSummativeModule,
+    handlePrintSummative,
+    saveOtherRequestField,
+    submitOtherRequestModule,
+    reviewOtherRequestModule,
+    handlePrintOtherRequest,
   } = useDashboardOrchestration();
 
   return (
@@ -424,6 +472,96 @@ export default function Page() {
             }}
             onPrintArbiter={() => {
               void handlePrintArbiter();
+            }}
+            progressReportRecord={progressReportRecord}
+            progressReportData={progressReportData}
+            progressReportPdfPath={progressReportPdfPath}
+            onSaveProgressReportField={(label, value) => {
+              void saveProgressReportField(label, value);
+            }}
+            onSubmitProgressReportModule={() => {
+              void submitProgressReportModule();
+            }}
+            onReviewProgressReportModule={(nextDecision, by) => {
+              void reviewProgressReportModule(nextDecision, by);
+            }}
+            onPrintProgressReport={() => {
+              void handlePrintProgressReport();
+            }}
+            leaveRecord={leaveRecord}
+            leaveData={leaveData}
+            leavePdfPath={leavePdfPath}
+            onSaveLeaveField={(label, value) => {
+              void saveLeaveField(label, value);
+            }}
+            onSubmitLeaveModule={() => {
+              void submitLeaveModule();
+            }}
+            onReviewLeaveModule={(nextDecision, by) => {
+              void reviewLeaveModule(nextDecision, by);
+            }}
+            onPrintLeave={() => {
+              void handlePrintLeave();
+            }}
+            readmissionRecord={readmissionRecord}
+            readmissionData={readmissionData}
+            readmissionPdfPath={readmissionPdfPath}
+            onSaveReadmissionField={(label, value) => {
+              void saveReadmissionField(label, value);
+            }}
+            onSubmitReadmissionModule={() => {
+              void submitReadmissionModule();
+            }}
+            onReviewReadmissionModule={(nextDecision, by) => {
+              void reviewReadmissionModule(nextDecision, by);
+            }}
+            onPrintReadmission={() => {
+              void handlePrintReadmission();
+            }}
+            upgradeRecord={upgradeRecord}
+            upgradeData={upgradeData}
+            upgradePdfPath={upgradePdfPath}
+            onSaveUpgradeField={(label, value) => {
+              void saveUpgradeField(label, value);
+            }}
+            onSubmitUpgradeModule={() => {
+              void submitUpgradeModule();
+            }}
+            onReviewUpgradeModule={(nextDecision, by) => {
+              void reviewUpgradeModule(nextDecision, by);
+            }}
+            onPrintUpgrade={() => {
+              void handlePrintUpgrade();
+            }}
+            summativeRecord={summativeRecord}
+            summativeData={summativeData}
+            summativePdfPath={summativePdfPath}
+            onSaveSummativeField={(label, value) => {
+              void saveSummativeField(label, value);
+            }}
+            onSubmitSummativeModule={() => {
+              void submitSummativeModule();
+            }}
+            onReviewSummativeModule={(nextDecision, by) => {
+              void reviewSummativeModule(nextDecision, by);
+            }}
+            onPrintSummative={() => {
+              void handlePrintSummative();
+            }}
+            otherRequestRecord={otherRequestRecord}
+            otherRequestData={otherRequestData}
+            otherRequestPdfPath={otherRequestPdfPath}
+            onSaveOtherRequestField={(label, value) => {
+              void saveOtherRequestField(label, value);
+            }}
+            onSubmitOtherRequestModule={() => {
+              void submitOtherRequestModule();
+            }}
+            onReviewOtherRequestModule={(nextDecision, by) => {
+              void reviewOtherRequestModule(nextDecision, by);
+            }}
+            onPrintOtherRequest={() => {
+              void handlePrintOtherRequest();
             }}
           />
 

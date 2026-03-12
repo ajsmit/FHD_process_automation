@@ -7,7 +7,13 @@ import type {
   ChangeTitleFormData,
   ExaminerSummaryCvFormData,
   IntentionToSubmitFormData,
+  LeaveOfAbsenceFormData,
   ModuleFormRecord,
+  OtherRequestFormData,
+  ProgressReportFormData,
+  ReadmissionRequestFormData,
+  SupervisorSummativeReportFormData,
+  UpgradeMscToPhdFormData,
 } from '@/lib/api';
 
 export interface WorkflowModulePanelsProps {
@@ -78,4 +84,52 @@ export interface WorkflowModulePanelsProps {
   onSubmitArbiterModule: () => void;
   onReviewArbiterModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
   onPrintArbiter: () => void;
+
+  progressReportRecord: ModuleFormRecord | null;
+  progressReportData: ProgressReportFormData | null;
+  progressReportPdfPath: string | null;
+  onSaveProgressReportField: (label: keyof ProgressReportFormData, value: string) => void;
+  onSubmitProgressReportModule: () => void;
+  onReviewProgressReportModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintProgressReport: () => void;
+
+  leaveRecord: ModuleFormRecord | null;
+  leaveData: LeaveOfAbsenceFormData | null;
+  leavePdfPath: string | null;
+  onSaveLeaveField: (label: keyof LeaveOfAbsenceFormData, value: string) => void;
+  onSubmitLeaveModule: () => void;
+  onReviewLeaveModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintLeave: () => void;
+
+  readmissionRecord: ModuleFormRecord | null;
+  readmissionData: ReadmissionRequestFormData | null;
+  readmissionPdfPath: string | null;
+  onSaveReadmissionField: (label: keyof ReadmissionRequestFormData, value: string) => void;
+  onSubmitReadmissionModule: () => void;
+  onReviewReadmissionModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintReadmission: () => void;
+
+  upgradeRecord: ModuleFormRecord | null;
+  upgradeData: UpgradeMscToPhdFormData | null;
+  upgradePdfPath: string | null;
+  onSaveUpgradeField: (label: keyof UpgradeMscToPhdFormData, value: string) => void;
+  onSubmitUpgradeModule: () => void;
+  onReviewUpgradeModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintUpgrade: () => void;
+
+  summativeRecord: ModuleFormRecord | null;
+  summativeData: SupervisorSummativeReportFormData | null;
+  summativePdfPath: string | null;
+  onSaveSummativeField: (label: keyof SupervisorSummativeReportFormData, value: string) => void;
+  onSubmitSummativeModule: () => void;
+  onReviewSummativeModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintSummative: () => void;
+
+  otherRequestRecord: ModuleFormRecord | null;
+  otherRequestData: OtherRequestFormData | null;
+  otherRequestPdfPath: string | null;
+  onSaveOtherRequestField: (label: keyof OtherRequestFormData, value: string) => void;
+  onSubmitOtherRequestModule: () => void;
+  onReviewOtherRequestModule: (decision: 'approved' | 'returned', by: 'dept' | 'faculty') => void;
+  onPrintOtherRequest: () => void;
 }

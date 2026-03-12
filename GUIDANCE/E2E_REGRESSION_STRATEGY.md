@@ -26,6 +26,35 @@ Covered scenarios:
   - APPOINT_EXAMINERS / CHANGE_EXAMINERS / EXAMINER_SUMMARY_CV / APPOINT_ARBITER prerequisite-guard API assertions.
   - UI stability checks while opening blocked Phase-B module tabs.
   - CHANGE_TITLE / CHANGE_SUPERVISOR / ADD_CO_SUPERVISOR panel/status load checks.
+- Progression/exception module panel regressions:
+  - PROGRESS_REPORT / LEAVE_OF_ABSENCE / READMISSION_REQUEST panel/status load checks.
+  - UPGRADE_MSC_TO_PHD / SUPERVISOR_SUMMATIVE_REPORT / OTHER_REQUEST panel/status load checks.
+
+Companion server lifecycle regressions (kept alongside workflow integration tests):
+- File: `server/src/services/workflow/changeRequestModulesService.test.ts`
+- Added progression coverage for `PROGRESS_REPORT`:
+  - prefill coherence from canonical ROTT data,
+  - submit -> dept -> faculty approval path,
+  - review-order gate enforcement and return/resubmit cycle.
+- Added progression coverage for `LEAVE_OF_ABSENCE`:
+  - prefill coherence from canonical ROTT data,
+  - submit -> dept -> faculty approval path,
+  - review-order gate enforcement and return/resubmit cycle.
+- Added progression coverage for `READMISSION_REQUEST`:
+  - prefill coherence from canonical ROTT data,
+  - submit -> dept -> faculty approval path,
+  - review-order gate enforcement and return/resubmit cycle.
+- Added progression coverage for `UPGRADE_MSC_TO_PHD`:
+  - prefill coherence from canonical ROTT data,
+  - submit -> dept -> faculty approval path,
+  - review-order gate enforcement and return/resubmit cycle.
+- Added progression coverage for `SUPERVISOR_SUMMATIVE_REPORT`:
+  - supervisor-authored submit/dept/faculty approval path,
+  - supervisor edit-role enforcement and return/resubmit cycle.
+- Added progression coverage for `OTHER_REQUEST`:
+  - prefill coherence from canonical ROTT data,
+  - submit -> dept -> faculty approval path,
+  - review-order gate enforcement and return/resubmit cycle.
 
 ## Design Principles Applied
 - Prefer stable selectors (`role`, `label`, heading-scoped sections) over brittle text snapshots.

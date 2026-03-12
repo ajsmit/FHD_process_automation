@@ -8,6 +8,12 @@ import {
   getChangeExaminers,
   getExaminerSummaryCv,
   getIntentionToSubmit,
+  getLeaveOfAbsence,
+  getOtherRequest,
+  getProgressReport,
+  getReadmissionRequest,
+  getSupervisorSummativeReport,
+  getUpgradeMscToPhd,
   patchAddCoSupervisor,
   patchAppointArbiter,
   patchAppointExaminers,
@@ -16,6 +22,12 @@ import {
   patchChangeExaminers,
   patchExaminerSummaryCv,
   patchIntentionToSubmit,
+  patchLeaveOfAbsence,
+  patchOtherRequest,
+  patchProgressReport,
+  patchReadmissionRequest,
+  patchSupervisorSummativeReport,
+  patchUpgradeMscToPhd,
   printAddCoSupervisor,
   printAppointArbiter,
   printAppointExaminers,
@@ -24,6 +36,12 @@ import {
   printChangeExaminers,
   printExaminerSummaryCv,
   printIntentionToSubmit,
+  printLeaveOfAbsence,
+  printOtherRequest,
+  printProgressReport,
+  printReadmissionRequest,
+  printSupervisorSummativeReport,
+  printUpgradeMscToPhd,
   reviewAddCoSupervisorByChair,
   reviewAddCoSupervisorByDept,
   reviewAddCoSupervisorByFaculty,
@@ -48,6 +66,18 @@ import {
   reviewExaminerSummaryCvByFaculty,
   reviewIntentionToSubmitByDept,
   reviewIntentionToSubmitBySupervisor,
+  reviewLeaveOfAbsenceByDept,
+  reviewLeaveOfAbsenceByFaculty,
+  reviewOtherRequestByDept,
+  reviewOtherRequestByFaculty,
+  reviewProgressReportByDept,
+  reviewProgressReportByFaculty,
+  reviewReadmissionRequestByDept,
+  reviewReadmissionRequestByFaculty,
+  reviewSupervisorSummativeReportByDept,
+  reviewSupervisorSummativeReportByFaculty,
+  reviewUpgradeMscToPhdByDept,
+  reviewUpgradeMscToPhdByFaculty,
   submitAddCoSupervisor,
   submitAppointArbiter,
   submitAppointExaminers,
@@ -56,6 +86,12 @@ import {
   submitChangeExaminers,
   submitExaminerSummaryCv,
   submitIntentionToSubmit,
+  submitLeaveOfAbsence,
+  submitOtherRequest,
+  submitProgressReport,
+  submitReadmissionRequest,
+  submitSupervisorSummativeReport,
+  submitUpgradeMscToPhd,
   type AddCoSupervisorFormData,
   type AppointArbiterFormData,
   type AppointExaminersFormData,
@@ -64,7 +100,13 @@ import {
   type ChangeExaminersFormData,
   type ExaminerSummaryCvFormData,
   type IntentionToSubmitFormData,
+  type LeaveOfAbsenceFormData,
   type ModuleFormRecord,
+  type OtherRequestFormData,
+  type ProgressReportFormData,
+  type ReadmissionRequestFormData,
+  type SupervisorSummativeReportFormData,
+  type UpgradeMscToPhdFormData,
 } from '@/lib/api';
 
 type ReviewDecisionValue = 'approved' | 'returned';
@@ -102,6 +144,30 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
   const [arbiterRecord, setArbiterRecord] = useState<ModuleFormRecord | null>(null);
   const [arbiterData, setArbiterData] = useState<AppointArbiterFormData | null>(null);
   const [arbiterPdfPath, setArbiterPdfPath] = useState<string | null>(null);
+
+  const [progressReportRecord, setProgressReportRecord] = useState<ModuleFormRecord | null>(null);
+  const [progressReportData, setProgressReportData] = useState<ProgressReportFormData | null>(null);
+  const [progressReportPdfPath, setProgressReportPdfPath] = useState<string | null>(null);
+
+  const [leaveRecord, setLeaveRecord] = useState<ModuleFormRecord | null>(null);
+  const [leaveData, setLeaveData] = useState<LeaveOfAbsenceFormData | null>(null);
+  const [leavePdfPath, setLeavePdfPath] = useState<string | null>(null);
+
+  const [readmissionRecord, setReadmissionRecord] = useState<ModuleFormRecord | null>(null);
+  const [readmissionData, setReadmissionData] = useState<ReadmissionRequestFormData | null>(null);
+  const [readmissionPdfPath, setReadmissionPdfPath] = useState<string | null>(null);
+
+  const [upgradeRecord, setUpgradeRecord] = useState<ModuleFormRecord | null>(null);
+  const [upgradeData, setUpgradeData] = useState<UpgradeMscToPhdFormData | null>(null);
+  const [upgradePdfPath, setUpgradePdfPath] = useState<string | null>(null);
+
+  const [summativeRecord, setSummativeRecord] = useState<ModuleFormRecord | null>(null);
+  const [summativeData, setSummativeData] = useState<SupervisorSummativeReportFormData | null>(null);
+  const [summativePdfPath, setSummativePdfPath] = useState<string | null>(null);
+
+  const [otherRequestRecord, setOtherRequestRecord] = useState<ModuleFormRecord | null>(null);
+  const [otherRequestData, setOtherRequestData] = useState<OtherRequestFormData | null>(null);
+  const [otherRequestPdfPath, setOtherRequestPdfPath] = useState<string | null>(null);
 
   async function refreshIntentionToSubmit(caseId: number) {
     const response = await getIntentionToSubmit(caseId);
@@ -157,6 +223,48 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setArbiterRecord(response.record);
     setArbiterData(response.formData);
     setArbiterPdfPath(response.record.pdf_path);
+  }
+
+  async function refreshProgressReport(caseId: number) {
+    const response = await getProgressReport(caseId);
+    setProgressReportRecord(response.record);
+    setProgressReportData(response.formData);
+    setProgressReportPdfPath(response.record.pdf_path);
+  }
+
+  async function refreshLeaveOfAbsence(caseId: number) {
+    const response = await getLeaveOfAbsence(caseId);
+    setLeaveRecord(response.record);
+    setLeaveData(response.formData);
+    setLeavePdfPath(response.record.pdf_path);
+  }
+
+  async function refreshReadmissionRequest(caseId: number) {
+    const response = await getReadmissionRequest(caseId);
+    setReadmissionRecord(response.record);
+    setReadmissionData(response.formData);
+    setReadmissionPdfPath(response.record.pdf_path);
+  }
+
+  async function refreshUpgradeMscToPhd(caseId: number) {
+    const response = await getUpgradeMscToPhd(caseId);
+    setUpgradeRecord(response.record);
+    setUpgradeData(response.formData);
+    setUpgradePdfPath(response.record.pdf_path);
+  }
+
+  async function refreshSupervisorSummativeReport(caseId: number) {
+    const response = await getSupervisorSummativeReport(caseId);
+    setSummativeRecord(response.record);
+    setSummativeData(response.formData);
+    setSummativePdfPath(response.record.pdf_path);
+  }
+
+  async function refreshOtherRequest(caseId: number) {
+    const response = await getOtherRequest(caseId);
+    setOtherRequestRecord(response.record);
+    setOtherRequestData(response.formData);
+    setOtherRequestPdfPath(response.record.pdf_path);
   }
 
   async function saveItsField(caseId: number | null, label: keyof IntentionToSubmitFormData, value: string) {
@@ -447,6 +555,216 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     setInfo('APPOINT_ARBITER PDF generated.');
   }
 
+  async function saveProgressReportField(caseId: number | null, label: keyof ProgressReportFormData, value: string) {
+    if (!caseId || !progressReportData) return;
+    const response = await patchProgressReport(caseId, { [label]: value } as Partial<ProgressReportFormData>);
+    setProgressReportRecord(response.record);
+    setProgressReportData(response.formData);
+    setInfo(`Saved PROGRESS_REPORT field: ${label}`);
+  }
+
+  async function submitProgressReportModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitProgressReport(caseId);
+    setProgressReportRecord(response.record);
+    await refreshProgressReport(caseId);
+    setInfo('PROGRESS_REPORT submitted.');
+  }
+
+  async function reviewProgressReportModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewProgressReportByDept,
+      faculty: reviewProgressReportByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setProgressReportRecord(response.record);
+    await refreshProgressReport(caseId);
+    setInfo(`PROGRESS_REPORT ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintProgressReport(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printProgressReport(caseId);
+    setProgressReportPdfPath(response.pdfPath);
+    setInfo('PROGRESS_REPORT PDF generated.');
+  }
+
+  async function saveLeaveField(caseId: number | null, label: keyof LeaveOfAbsenceFormData, value: string) {
+    if (!caseId || !leaveData) return;
+    const response = await patchLeaveOfAbsence(caseId, { [label]: value } as Partial<LeaveOfAbsenceFormData>);
+    setLeaveRecord(response.record);
+    setLeaveData(response.formData);
+    setInfo(`Saved LEAVE_OF_ABSENCE field: ${label}`);
+  }
+
+  async function submitLeaveModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitLeaveOfAbsence(caseId);
+    setLeaveRecord(response.record);
+    await refreshLeaveOfAbsence(caseId);
+    setInfo('LEAVE_OF_ABSENCE submitted.');
+  }
+
+  async function reviewLeaveModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewLeaveOfAbsenceByDept,
+      faculty: reviewLeaveOfAbsenceByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setLeaveRecord(response.record);
+    await refreshLeaveOfAbsence(caseId);
+    setInfo(`LEAVE_OF_ABSENCE ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintLeave(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printLeaveOfAbsence(caseId);
+    setLeavePdfPath(response.pdfPath);
+    setInfo('LEAVE_OF_ABSENCE PDF generated.');
+  }
+
+  async function saveReadmissionField(caseId: number | null, label: keyof ReadmissionRequestFormData, value: string) {
+    if (!caseId || !readmissionData) return;
+    const response = await patchReadmissionRequest(caseId, { [label]: value } as Partial<ReadmissionRequestFormData>);
+    setReadmissionRecord(response.record);
+    setReadmissionData(response.formData);
+    setInfo(`Saved READMISSION_REQUEST field: ${label}`);
+  }
+
+  async function submitReadmissionModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitReadmissionRequest(caseId);
+    setReadmissionRecord(response.record);
+    await refreshReadmissionRequest(caseId);
+    setInfo('READMISSION_REQUEST submitted.');
+  }
+
+  async function reviewReadmissionModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewReadmissionRequestByDept,
+      faculty: reviewReadmissionRequestByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setReadmissionRecord(response.record);
+    await refreshReadmissionRequest(caseId);
+    setInfo(`READMISSION_REQUEST ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintReadmission(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printReadmissionRequest(caseId);
+    setReadmissionPdfPath(response.pdfPath);
+    setInfo('READMISSION_REQUEST PDF generated.');
+  }
+
+  async function saveUpgradeField(caseId: number | null, label: keyof UpgradeMscToPhdFormData, value: string) {
+    if (!caseId || !upgradeData) return;
+    const response = await patchUpgradeMscToPhd(caseId, { [label]: value } as Partial<UpgradeMscToPhdFormData>);
+    setUpgradeRecord(response.record);
+    setUpgradeData(response.formData);
+    setInfo(`Saved UPGRADE_MSC_TO_PHD field: ${label}`);
+  }
+
+  async function submitUpgradeModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitUpgradeMscToPhd(caseId);
+    setUpgradeRecord(response.record);
+    await refreshUpgradeMscToPhd(caseId);
+    setInfo('UPGRADE_MSC_TO_PHD submitted.');
+  }
+
+  async function reviewUpgradeModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewUpgradeMscToPhdByDept,
+      faculty: reviewUpgradeMscToPhdByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setUpgradeRecord(response.record);
+    await refreshUpgradeMscToPhd(caseId);
+    setInfo(`UPGRADE_MSC_TO_PHD ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintUpgrade(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printUpgradeMscToPhd(caseId);
+    setUpgradePdfPath(response.pdfPath);
+    setInfo('UPGRADE_MSC_TO_PHD PDF generated.');
+  }
+
+  async function saveSummativeField(caseId: number | null, label: keyof SupervisorSummativeReportFormData, value: string) {
+    if (!caseId || !summativeData) return;
+    const response = await patchSupervisorSummativeReport(caseId, { [label]: value } as Partial<SupervisorSummativeReportFormData>);
+    setSummativeRecord(response.record);
+    setSummativeData(response.formData);
+    setInfo(`Saved SUPERVISOR_SUMMATIVE_REPORT field: ${label}`);
+  }
+
+  async function submitSummativeModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitSupervisorSummativeReport(caseId);
+    setSummativeRecord(response.record);
+    await refreshSupervisorSummativeReport(caseId);
+    setInfo('SUPERVISOR_SUMMATIVE_REPORT submitted.');
+  }
+
+  async function reviewSummativeModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewSupervisorSummativeReportByDept,
+      faculty: reviewSupervisorSummativeReportByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setSummativeRecord(response.record);
+    await refreshSupervisorSummativeReport(caseId);
+    setInfo(`SUPERVISOR_SUMMATIVE_REPORT ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintSummative(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printSupervisorSummativeReport(caseId);
+    setSummativePdfPath(response.pdfPath);
+    setInfo('SUPERVISOR_SUMMATIVE_REPORT PDF generated.');
+  }
+
+  async function saveOtherRequestField(caseId: number | null, label: keyof OtherRequestFormData, value: string) {
+    if (!caseId || !otherRequestData) return;
+    const response = await patchOtherRequest(caseId, { [label]: value } as Partial<OtherRequestFormData>);
+    setOtherRequestRecord(response.record);
+    setOtherRequestData(response.formData);
+    setInfo(`Saved OTHER_REQUEST field: ${label}`);
+  }
+
+  async function submitOtherRequestModule(caseId: number | null) {
+    if (!caseId) return;
+    const response = await submitOtherRequest(caseId);
+    setOtherRequestRecord(response.record);
+    await refreshOtherRequest(caseId);
+    setInfo('OTHER_REQUEST submitted.');
+  }
+
+  async function reviewOtherRequestModule(caseId: number | null, decisionValue: ReviewDecisionValue, by: 'dept' | 'faculty') {
+    if (!caseId) return;
+    const handlers: Record<'dept' | 'faculty', ReviewHandler> = {
+      dept: reviewOtherRequestByDept,
+      faculty: reviewOtherRequestByFaculty,
+    };
+    const response = await handlers[by](caseId, decisionValue);
+    setOtherRequestRecord(response.record);
+    await refreshOtherRequest(caseId);
+    setInfo(`OTHER_REQUEST ${decisionValue} by ${by}.`);
+  }
+
+  async function handlePrintOtherRequest(caseId: number | null) {
+    if (!caseId) return;
+    const response = await printOtherRequest(caseId);
+    setOtherRequestPdfPath(response.pdfPath);
+    setInfo('OTHER_REQUEST PDF generated.');
+  }
+
   return {
     itsRecord,
     itsData,
@@ -472,6 +790,24 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     arbiterRecord,
     arbiterData,
     arbiterPdfPath,
+    progressReportRecord,
+    progressReportData,
+    progressReportPdfPath,
+    leaveRecord,
+    leaveData,
+    leavePdfPath,
+    readmissionRecord,
+    readmissionData,
+    readmissionPdfPath,
+    upgradeRecord,
+    upgradeData,
+    upgradePdfPath,
+    summativeRecord,
+    summativeData,
+    summativePdfPath,
+    otherRequestRecord,
+    otherRequestData,
+    otherRequestPdfPath,
     refreshIntentionToSubmit,
     refreshAppointExaminers,
     refreshChangeTitle,
@@ -480,6 +816,12 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     refreshChangeExaminers,
     refreshExaminerSummaryCv,
     refreshAppointArbiter,
+    refreshProgressReport,
+    refreshLeaveOfAbsence,
+    refreshReadmissionRequest,
+    refreshUpgradeMscToPhd,
+    refreshSupervisorSummativeReport,
+    refreshOtherRequest,
     saveItsField,
     submitItsModule,
     reviewItsModule,
@@ -512,5 +854,29 @@ export function useDashboardPhaseBModules(setInfo: (message: string | null) => v
     submitArbiterModule,
     reviewArbiterModule,
     handlePrintArbiter,
+    saveProgressReportField,
+    submitProgressReportModule,
+    reviewProgressReportModule,
+    handlePrintProgressReport,
+    saveLeaveField,
+    submitLeaveModule,
+    reviewLeaveModule,
+    handlePrintLeave,
+    saveReadmissionField,
+    submitReadmissionModule,
+    reviewReadmissionModule,
+    handlePrintReadmission,
+    saveUpgradeField,
+    submitUpgradeModule,
+    reviewUpgradeModule,
+    handlePrintUpgrade,
+    saveSummativeField,
+    submitSummativeModule,
+    reviewSummativeModule,
+    handlePrintSummative,
+    saveOtherRequestField,
+    submitOtherRequestModule,
+    reviewOtherRequestModule,
+    handlePrintOtherRequest,
   };
 }

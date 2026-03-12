@@ -1,6 +1,6 @@
 # PG Workflow Platform Implementation Plan
 
-Version: 2026-03-11  
+Version: 2026-03-12  
 Status: Rolling plan aligned to implemented code
 
 ## Boundaries
@@ -140,12 +140,65 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - `ARCHITECTURE_DEBT_REGISTER.md`
     - `E2E_REGRESSION_STRATEGY.md`
   - aligned in-progress backlog so `2.3` is the sole next-iteration execution queue.
+- Phase-C progression tranche started (2026-03-12):
+  - implemented baseline `PROGRESS_REPORT` module backend surface:
+    - migration `progress_report_forms`,
+    - lifecycle service `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - controller + route wiring under `/api/v1/title-registration/cases/:caseId/progress-report/*`.
+  - added regression coverage for `PROGRESS_REPORT` lifecycle:
+    - prefill coherence + submit/dept/faculty approval path,
+    - review-order enforcement + return/resubmit loop.
+  - implemented baseline `LEAVE_OF_ABSENCE` module backend surface:
+    - migration `leave_of_absence_forms`,
+    - lifecycle service extension in `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - controller + route wiring under `/api/v1/title-registration/cases/:caseId/leave-of-absence/*`.
+  - added regression coverage for `LEAVE_OF_ABSENCE` lifecycle:
+    - prefill coherence + submit/dept/faculty approval path,
+    - review-order enforcement + return/resubmit loop.
+  - implemented baseline `READMISSION_REQUEST` module backend surface:
+    - migration `readmission_request_forms`,
+    - lifecycle service extension in `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - controller + route wiring under `/api/v1/title-registration/cases/:caseId/readmission-request/*`.
+  - added regression coverage for `READMISSION_REQUEST` lifecycle:
+    - prefill coherence + submit/dept/faculty approval path,
+    - review-order enforcement + return/resubmit loop.
+  - implemented baseline `UPGRADE_MSC_TO_PHD` module backend surface:
+    - migration `upgrade_msc_to_phd_forms`,
+    - lifecycle service extension in `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - controller + route wiring under `/api/v1/title-registration/cases/:caseId/upgrade-msc-to-phd/*`.
+  - added regression coverage for `UPGRADE_MSC_TO_PHD` lifecycle:
+    - prefill coherence + submit/dept/faculty approval path,
+    - review-order enforcement + return/resubmit loop.
+  - implemented baseline `SUPERVISOR_SUMMATIVE_REPORT` module backend surface:
+    - migration `supervisor_summative_report_forms`,
+    - lifecycle service extension in `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - supervisor-author edit/submit role gate with departmental/faculty review chain.
+  - added regression coverage for `SUPERVISOR_SUMMATIVE_REPORT` lifecycle:
+    - supervisor-authored approval path,
+    - role-gate enforcement + return/resubmit loop.
+  - implemented baseline `OTHER_REQUEST` module backend surface:
+    - migration `other_request_forms`,
+    - lifecycle service extension in `progressionModulesService.ts` (prefill/save/submit/dept-review/faculty-review/print),
+    - controller + route wiring under `/api/v1/title-registration/cases/:caseId/other-request/*`.
+  - added regression coverage for `OTHER_REQUEST` lifecycle:
+    - prefill coherence + submit/dept/faculty approval path,
+    - review-order enforcement + return/resubmit loop.
+  - wired client dashboard/API support for progression+exception modules:
+    - added client API contracts/endpoints and dashboard orchestration hooks for:
+      - `PROGRESS_REPORT`
+      - `LEAVE_OF_ABSENCE`
+      - `READMISSION_REQUEST`
+      - `UPGRADE_MSC_TO_PHD`
+      - `SUPERVISOR_SUMMATIVE_REPORT`
+      - `OTHER_REQUEST`
+    - added dedicated `ProgressionModulePanels` UI surface and sidebar module entries.
+  - extended UI regression coverage (`e2e/phaseb-modules.spec.ts`) to assert panel/status rendering for all new progression+exception modules.
 
 ### 2.2 In progress
 - None (closed on 2026-03-11).
 
 ### 2.3 Next Iteration (tomorrow)
-- Remaining change/progression forms from `ridiculous_forms`
+- None (closed on 2026-03-12): all remaining progression/change forms from `ridiculous_forms` are now baseline-implemented on server lifecycle routes with regression coverage.
 
 ## 3. Execution Guardrails
 1. Follow policy and mapping owners before implementation:

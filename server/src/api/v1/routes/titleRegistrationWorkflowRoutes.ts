@@ -3,6 +3,11 @@ import {
   checkSasiAndCreateCase,
   getCase,
   getMou,
+  getLeaveOfAbsenceModule,
+  getOtherRequestModule,
+  getReadmissionRequestModule,
+  getSupervisorSummativeReportModule,
+  getUpgradeMscToPhdModule,
   getIntentionToSubmit,
   getNotifications,
   getExternalInvitesForCase,
@@ -21,6 +26,12 @@ import {
   markStudentVetted,
   patchForm,
   patchIntentionToSubmit,
+  patchLeaveOfAbsenceModule,
+  patchOtherRequestModule,
+  patchReadmissionRequestModule,
+  patchSupervisorSummativeReportModule,
+  patchUpgradeMscToPhdModule,
+  patchProgressReportModule,
   patchMou,
   patchAppointExaminers,
   patchAppointArbiter,
@@ -62,7 +73,19 @@ import {
   postPrintChangeTitle,
   postPrintExaminerSummaryCv,
   postPrintIntentionToSubmit,
+  postPrintLeaveOfAbsence,
+  postPrintOtherRequest,
+  postPrintReadmissionRequest,
+  postPrintSupervisorSummativeReport,
+  postPrintUpgradeMscToPhd,
+  postPrintProgressReport,
   postSubmitIntentionToSubmit,
+  postSubmitLeaveOfAbsence,
+  postSubmitOtherRequest,
+  postSubmitReadmissionRequest,
+  postSubmitSupervisorSummativeReport,
+  postSubmitUpgradeMscToPhd,
+  postSubmitProgressReport,
   postSubmitAddCoSupervisor,
   postSubmitAppointExaminers,
   postSubmitAppointArbiter,
@@ -83,6 +106,19 @@ import {
   signChairperson,
   markMouCompleted,
   triggerFacultyReminder,
+  getProgressReportModule,
+  postLeaveOfAbsenceDeptReview,
+  postLeaveOfAbsenceFacultyReview,
+  postOtherRequestDeptReview,
+  postOtherRequestFacultyReview,
+  postReadmissionRequestDeptReview,
+  postReadmissionRequestFacultyReview,
+  postSupervisorSummativeReportDeptReview,
+  postSupervisorSummativeReportFacultyReview,
+  postUpgradeMscToPhdDeptReview,
+  postUpgradeMscToPhdFacultyReview,
+  postProgressReportDeptReview,
+  postProgressReportFacultyReview,
 } from '../../../controllers/titleRegistrationWorkflowController';
 import { requireAuth } from '../../../middleware/auth';
 import { validateBody, validateParams, validateQuery } from '../../../middleware/requestValidation';
@@ -189,5 +225,41 @@ router.post('/cases/:caseId/add-co-supervisor/dept-review', requireAuth, validat
 router.post('/cases/:caseId/add-co-supervisor/chairperson-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_chairperson'), postAddCoSupervisorChairReview);
 router.post('/cases/:caseId/add-co-supervisor/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postAddCoSupervisorFacultyReview);
 router.post('/cases/:caseId/add-co-supervisor/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintAddCoSupervisor);
+router.get('/cases/:caseId/progress-report', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getProgressReportModule);
+router.patch('/cases/:caseId/progress-report', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_student_edit_submit'), patchProgressReportModule);
+router.post('/cases/:caseId/progress-report/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitProgressReport);
+router.post('/cases/:caseId/progress-report/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postProgressReportDeptReview);
+router.post('/cases/:caseId/progress-report/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postProgressReportFacultyReview);
+router.post('/cases/:caseId/progress-report/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintProgressReport);
+router.get('/cases/:caseId/leave-of-absence', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getLeaveOfAbsenceModule);
+router.patch('/cases/:caseId/leave-of-absence', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_student_edit_submit'), patchLeaveOfAbsenceModule);
+router.post('/cases/:caseId/leave-of-absence/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitLeaveOfAbsence);
+router.post('/cases/:caseId/leave-of-absence/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postLeaveOfAbsenceDeptReview);
+router.post('/cases/:caseId/leave-of-absence/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postLeaveOfAbsenceFacultyReview);
+router.post('/cases/:caseId/leave-of-absence/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintLeaveOfAbsence);
+router.get('/cases/:caseId/readmission-request', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getReadmissionRequestModule);
+router.patch('/cases/:caseId/readmission-request', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_student_edit_submit'), patchReadmissionRequestModule);
+router.post('/cases/:caseId/readmission-request/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitReadmissionRequest);
+router.post('/cases/:caseId/readmission-request/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postReadmissionRequestDeptReview);
+router.post('/cases/:caseId/readmission-request/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postReadmissionRequestFacultyReview);
+router.post('/cases/:caseId/readmission-request/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintReadmissionRequest);
+router.get('/cases/:caseId/upgrade-msc-to-phd', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getUpgradeMscToPhdModule);
+router.patch('/cases/:caseId/upgrade-msc-to-phd', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_student_edit_submit'), patchUpgradeMscToPhdModule);
+router.post('/cases/:caseId/upgrade-msc-to-phd/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitUpgradeMscToPhd);
+router.post('/cases/:caseId/upgrade-msc-to-phd/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postUpgradeMscToPhdDeptReview);
+router.post('/cases/:caseId/upgrade-msc-to-phd/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postUpgradeMscToPhdFacultyReview);
+router.post('/cases/:caseId/upgrade-msc-to-phd/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintUpgradeMscToPhd);
+router.get('/cases/:caseId/supervisor-summative-report', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getSupervisorSummativeReportModule);
+router.patch('/cases/:caseId/supervisor-summative-report', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_supervisor_edit_submit'), patchSupervisorSummativeReportModule);
+router.post('/cases/:caseId/supervisor-summative-report/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_supervisor_edit_submit'), postSubmitSupervisorSummativeReport);
+router.post('/cases/:caseId/supervisor-summative-report/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postSupervisorSummativeReportDeptReview);
+router.post('/cases/:caseId/supervisor-summative-report/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postSupervisorSummativeReportFacultyReview);
+router.post('/cases/:caseId/supervisor-summative-report/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintSupervisorSummativeReport);
+router.get('/cases/:caseId/other-request', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('case_read'), getOtherRequestModule);
+router.patch('/cases/:caseId/other-request', requireAuth, validateParams(caseIdParamSchema), validateBody(patchPayloadBodySchema), requireCaseOperationAuthorization('module_student_edit_submit'), patchOtherRequestModule);
+router.post('/cases/:caseId/other-request/submit', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_student_edit_submit'), postSubmitOtherRequest);
+router.post('/cases/:caseId/other-request/dept-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_dept'), postOtherRequestDeptReview);
+router.post('/cases/:caseId/other-request/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(moduleReviewDecisionBodySchema), requireCaseOperationAuthorization('module_review_faculty'), postOtherRequestFacultyReview);
+router.post('/cases/:caseId/other-request/print', requireAuth, validateParams(caseIdParamSchema), requireCaseOperationAuthorization('module_print'), postPrintOtherRequest);
 
 export default router;

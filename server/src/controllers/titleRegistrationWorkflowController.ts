@@ -89,6 +89,44 @@ import {
   updateChangeSupervisor,
   updateChangeTitle,
 } from '../services/workflow/changeRequestModulesService';
+import {
+  getProgressReport,
+  getReadmissionRequest,
+  getLeaveOfAbsence,
+  getOtherRequest,
+  getSupervisorSummativeReport,
+  getUpgradeMscToPhd,
+  patchOtherRequest,
+  patchLeaveOfAbsence,
+  patchReadmissionRequest,
+  patchSupervisorSummativeReport,
+  patchUpgradeMscToPhd,
+  printLeaveOfAbsence,
+  printReadmissionRequest,
+  printOtherRequest,
+  printSupervisorSummativeReport,
+  printUpgradeMscToPhd,
+  reviewLeaveOfAbsenceByDept,
+  reviewLeaveOfAbsenceByFaculty,
+  reviewOtherRequestByDept,
+  reviewOtherRequestByFaculty,
+  reviewReadmissionRequestByDept,
+  reviewReadmissionRequestByFaculty,
+  reviewSupervisorSummativeReportByDept,
+  reviewSupervisorSummativeReportByFaculty,
+  reviewUpgradeMscToPhdByDept,
+  reviewUpgradeMscToPhdByFaculty,
+  submitOtherRequest,
+  submitLeaveOfAbsence,
+  patchProgressReport,
+  printProgressReport,
+  reviewProgressReportByDept,
+  reviewProgressReportByFaculty,
+  submitReadmissionRequest,
+  submitSupervisorSummativeReport,
+  submitUpgradeMscToPhd,
+  submitProgressReport,
+} from '../services/workflow/progressionModulesService';
 import type { FormData, MouFormData, ReviewDecision } from '../services/contracts/titleRegistration';
 import { toAppError } from '../errors/httpErrors';
 
@@ -1021,5 +1059,401 @@ export async function postPrintAddCoSupervisor(req: Request, res: Response): Pro
     res.status(200).json(result);
   } catch (error) {
     handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Add Co-supervisor PDF' });
+  }
+}
+
+export async function getProgressReportModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getProgressReport(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Progress Report' });
+  }
+}
+
+export async function patchProgressReportModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchProgressReport(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Progress Report' });
+  }
+}
+
+export async function postSubmitProgressReport(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitProgressReport(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Progress Report' });
+  }
+}
+
+export async function postProgressReportDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewProgressReportByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Progress Report department review' });
+  }
+}
+
+export async function postProgressReportFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewProgressReportByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Progress Report faculty review' });
+  }
+}
+
+export async function postPrintProgressReport(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printProgressReport(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Progress Report PDF' });
+  }
+}
+
+export async function getLeaveOfAbsenceModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getLeaveOfAbsence(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Leave of Absence' });
+  }
+}
+
+export async function patchLeaveOfAbsenceModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchLeaveOfAbsence(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Leave of Absence' });
+  }
+}
+
+export async function postSubmitLeaveOfAbsence(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitLeaveOfAbsence(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Leave of Absence' });
+  }
+}
+
+export async function postLeaveOfAbsenceDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewLeaveOfAbsenceByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Leave of Absence department review' });
+  }
+}
+
+export async function postLeaveOfAbsenceFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewLeaveOfAbsenceByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Leave of Absence faculty review' });
+  }
+}
+
+export async function postPrintLeaveOfAbsence(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printLeaveOfAbsence(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Leave of Absence PDF' });
+  }
+}
+
+export async function getReadmissionRequestModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getReadmissionRequest(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Readmission Request' });
+  }
+}
+
+export async function patchReadmissionRequestModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchReadmissionRequest(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Readmission Request' });
+  }
+}
+
+export async function postSubmitReadmissionRequest(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitReadmissionRequest(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Readmission Request' });
+  }
+}
+
+export async function postReadmissionRequestDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewReadmissionRequestByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Readmission Request department review' });
+  }
+}
+
+export async function postReadmissionRequestFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewReadmissionRequestByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Readmission Request faculty review' });
+  }
+}
+
+export async function postPrintReadmissionRequest(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printReadmissionRequest(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Readmission Request PDF' });
+  }
+}
+
+export async function getUpgradeMscToPhdModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getUpgradeMscToPhd(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Upgrade MSc to PhD' });
+  }
+}
+
+export async function patchUpgradeMscToPhdModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchUpgradeMscToPhd(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Upgrade MSc to PhD' });
+  }
+}
+
+export async function postSubmitUpgradeMscToPhd(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitUpgradeMscToPhd(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Upgrade MSc to PhD' });
+  }
+}
+
+export async function postUpgradeMscToPhdDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewUpgradeMscToPhdByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Upgrade MSc to PhD department review' });
+  }
+}
+
+export async function postUpgradeMscToPhdFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewUpgradeMscToPhdByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Upgrade MSc to PhD faculty review' });
+  }
+}
+
+export async function postPrintUpgradeMscToPhd(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printUpgradeMscToPhd(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Upgrade MSc to PhD PDF' });
+  }
+}
+
+export async function getSupervisorSummativeReportModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getSupervisorSummativeReport(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Supervisor Summative Report' });
+  }
+}
+
+export async function patchSupervisorSummativeReportModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchSupervisorSummativeReport(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Supervisor Summative Report' });
+  }
+}
+
+export async function postSubmitSupervisorSummativeReport(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitSupervisorSummativeReport(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Supervisor Summative Report' });
+  }
+}
+
+export async function postSupervisorSummativeReportDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewSupervisorSummativeReportByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Supervisor Summative Report department review' });
+  }
+}
+
+export async function postSupervisorSummativeReportFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewSupervisorSummativeReportByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Supervisor Summative Report faculty review' });
+  }
+}
+
+export async function postPrintSupervisorSummativeReport(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printSupervisorSummativeReport(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Supervisor Summative Report PDF' });
+  }
+}
+
+export async function getOtherRequestModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await getOtherRequest(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load Other Request' });
+  }
+}
+
+export async function patchOtherRequestModule(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await patchOtherRequest(actor, caseId, req.body ?? {});
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update Other Request' });
+  }
+}
+
+export async function postSubmitOtherRequest(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await submitOtherRequest(actor, caseId);
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to submit Other Request' });
+  }
+}
+
+export async function postOtherRequestDeptReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewOtherRequestByDept(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Other Request department review' });
+  }
+}
+
+export async function postOtherRequestFacultyReview(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const record = await reviewOtherRequestByFaculty(actor, caseId, parseModuleDecision(req.body?.decision));
+    res.status(200).json({ record });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed Other Request faculty review' });
+  }
+}
+
+export async function postPrintOtherRequest(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const caseId = parseCaseId(req.params.caseId);
+    const result = await printOtherRequest(actor, caseId);
+    res.status(200).json(result);
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to generate Other Request PDF' });
   }
 }

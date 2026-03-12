@@ -122,6 +122,36 @@ export function useDashboardOrchestration() {
           await phaseB.refreshAppointArbiter(caseId);
         }
       },
+      progress_report: async () => {
+        if (caseId) {
+          await phaseB.refreshProgressReport(caseId);
+        }
+      },
+      leave_of_absence: async () => {
+        if (caseId) {
+          await phaseB.refreshLeaveOfAbsence(caseId);
+        }
+      },
+      readmission_request: async () => {
+        if (caseId) {
+          await phaseB.refreshReadmissionRequest(caseId);
+        }
+      },
+      upgrade_msc_to_phd: async () => {
+        if (caseId) {
+          await phaseB.refreshUpgradeMscToPhd(caseId);
+        }
+      },
+      supervisor_summative_report: async () => {
+        if (caseId) {
+          await phaseB.refreshSupervisorSummativeReport(caseId);
+        }
+      },
+      other_request: async () => {
+        if (caseId) {
+          await phaseB.refreshOtherRequest(caseId);
+        }
+      },
       supervisor_profiles: async () => {
         if (caseId) {
           await profiles.refreshSupervisorProfiles(caseId);
@@ -316,6 +346,102 @@ export function useDashboardOrchestration() {
     await phaseB.handlePrintArbiter(core.caseRecord?.id ?? null);
   }
 
+  async function saveProgressReportField(label: Parameters<typeof phaseB.saveProgressReportField>[1], value: string) {
+    await phaseB.saveProgressReportField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitProgressReportModule() {
+    await phaseB.submitProgressReportModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewProgressReportModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewProgressReportModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintProgressReport() {
+    await phaseB.handlePrintProgressReport(core.caseRecord?.id ?? null);
+  }
+
+  async function saveLeaveField(label: Parameters<typeof phaseB.saveLeaveField>[1], value: string) {
+    await phaseB.saveLeaveField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitLeaveModule() {
+    await phaseB.submitLeaveModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewLeaveModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewLeaveModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintLeave() {
+    await phaseB.handlePrintLeave(core.caseRecord?.id ?? null);
+  }
+
+  async function saveReadmissionField(label: Parameters<typeof phaseB.saveReadmissionField>[1], value: string) {
+    await phaseB.saveReadmissionField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitReadmissionModule() {
+    await phaseB.submitReadmissionModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewReadmissionModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewReadmissionModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintReadmission() {
+    await phaseB.handlePrintReadmission(core.caseRecord?.id ?? null);
+  }
+
+  async function saveUpgradeField(label: Parameters<typeof phaseB.saveUpgradeField>[1], value: string) {
+    await phaseB.saveUpgradeField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitUpgradeModule() {
+    await phaseB.submitUpgradeModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewUpgradeModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewUpgradeModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintUpgrade() {
+    await phaseB.handlePrintUpgrade(core.caseRecord?.id ?? null);
+  }
+
+  async function saveSummativeField(label: Parameters<typeof phaseB.saveSummativeField>[1], value: string) {
+    await phaseB.saveSummativeField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitSummativeModule() {
+    await phaseB.submitSummativeModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewSummativeModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewSummativeModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintSummative() {
+    await phaseB.handlePrintSummative(core.caseRecord?.id ?? null);
+  }
+
+  async function saveOtherRequestField(label: Parameters<typeof phaseB.saveOtherRequestField>[1], value: string) {
+    await phaseB.saveOtherRequestField(core.caseRecord?.id ?? null, label, value);
+  }
+
+  async function submitOtherRequestModule() {
+    await phaseB.submitOtherRequestModule(core.caseRecord?.id ?? null);
+  }
+
+  async function reviewOtherRequestModule(decisionValue: 'approved' | 'returned', by: 'dept' | 'faculty') {
+    await phaseB.reviewOtherRequestModule(core.caseRecord?.id ?? null, decisionValue, by);
+  }
+
+  async function handlePrintOtherRequest() {
+    await phaseB.handlePrintOtherRequest(core.caseRecord?.id ?? null);
+  }
+
   return {
     ...core,
     ...ops,
@@ -373,5 +499,29 @@ export function useDashboardOrchestration() {
     submitArbiterModule,
     reviewArbiterModule,
     handlePrintArbiter,
+    saveProgressReportField,
+    submitProgressReportModule,
+    reviewProgressReportModule,
+    handlePrintProgressReport,
+    saveLeaveField,
+    submitLeaveModule,
+    reviewLeaveModule,
+    handlePrintLeave,
+    saveReadmissionField,
+    submitReadmissionModule,
+    reviewReadmissionModule,
+    handlePrintReadmission,
+    saveUpgradeField,
+    submitUpgradeModule,
+    reviewUpgradeModule,
+    handlePrintUpgrade,
+    saveSummativeField,
+    submitSummativeModule,
+    reviewSummativeModule,
+    handlePrintSummative,
+    saveOtherRequestField,
+    submitOtherRequestModule,
+    reviewOtherRequestModule,
+    handlePrintOtherRequest,
   };
 }
