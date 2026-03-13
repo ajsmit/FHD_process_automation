@@ -45,6 +45,10 @@ export default function AdminPolicyPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (process.env.NODE_ENV === 'production') {
+      setActiveActor('faculty');
+      return;
+    }
     const actorParam = (new URLSearchParams(window.location.search).get('actor') ?? '').trim().toLowerCase();
     setActiveActor(actorParam === 'dept' || actorParam === 'student' ? actorParam : 'faculty');
   }, []);

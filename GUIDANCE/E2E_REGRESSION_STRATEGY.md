@@ -44,7 +44,8 @@ Covered scenarios:
   - faculty annual calendar update flow on `/admin-policy`,
   - landing-page visibility parity for updated current-year faculty notice,
   - department message publish flow and downstream landing visibility,
-  - unauthorized student write-path rejection on policy-admin endpoints.
+  - unauthorized student write-path rejection on policy-admin endpoints (`403` authorization semantics).
+  - dev/test actor simulation via `?actor=` is non-production only; production behavior uses the authenticated Faculty context.
 
 Companion server lifecycle regressions (kept alongside workflow integration tests):
 - File: `server/src/services/workflow/changeRequestModulesService.test.ts`

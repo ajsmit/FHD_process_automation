@@ -11,6 +11,9 @@ import {
   getIntentionToSubmit,
   getNotifications,
   getExternalInvitesForCase,
+  getLandingMessagesForView,
+  getManagedLandingMessagesView,
+  getFacultyCalendar,
   getPeople,
   getPipeline,
   getAppointExaminers,
@@ -25,6 +28,8 @@ import {
   getToDo,
   markStudentVetted,
   patchForm,
+  patchFacultyCalendar,
+  patchLandingMessageById,
   patchIntentionToSubmit,
   patchLeaveOfAbsenceModule,
   patchOtherRequestModule,
@@ -86,6 +91,7 @@ import {
   postSubmitSupervisorSummativeReport,
   postSubmitUpgradeMscToPhd,
   postSubmitProgressReport,
+  postLandingMessage,
   postSubmitAddCoSupervisor,
   postSubmitAppointExaminers,
   postSubmitAppointArbiter,
@@ -130,8 +136,15 @@ import {
 } from '../../../middleware/workflowAuthorization';
 import {
   caseIdParamSchema,
+  calendarPatchBodySchema,
+  calendarQuerySchema,
+  calendarYearParamSchema,
+  landingMessageBodySchema,
+  landingMessagePatchBodySchema,
+  landingMessagesQuerySchema,
   commentsOnlyBodySchema,
   moduleReviewDecisionBodySchema,
+  messageIdParamSchema,
   patchPayloadBodySchema,
   pipelineQuerySchema,
   profileIdParamSchema,
@@ -154,6 +167,12 @@ router.post('/cases/:caseId/dept-send-faculty', requireAuth, validateParams(case
 router.post('/cases/:caseId/faculty-review', requireAuth, validateParams(caseIdParamSchema), validateBody(reviewDecisionBodySchema), requireTransitionAuthorization('faculty_review'), reviewFaculty);
 router.post('/cases/:caseId/reminder', requireAuth, validateParams(caseIdParamSchema), requireTransitionAuthorization('reminder'), triggerFacultyReminder);
 router.get('/pipeline', requireAuth, validateQuery(pipelineQuerySchema), requireCollectionOperationAuthorization(), getPipeline);
+router.get('/faculty-calendar', requireAuth, validateQuery(calendarQuerySchema), requireCollectionOperationAuthorization(), getFacultyCalendar);
+router.patch('/faculty-calendar/:year', requireAuth, validateParams(calendarYearParamSchema), validateBody(calendarPatchBodySchema), requireCollectionOperationAuthorization(), patchFacultyCalendar);
+router.get('/landing-messages', requireAuth, validateQuery(landingMessagesQuerySchema), requireCollectionOperationAuthorization(), getLandingMessagesForView);
+router.get('/landing-messages/manage', requireAuth, requireCollectionOperationAuthorization(), getManagedLandingMessagesView);
+router.post('/landing-messages', requireAuth, validateBody(landingMessageBodySchema), requireCollectionOperationAuthorization(), postLandingMessage);
+router.patch('/landing-messages/:messageId', requireAuth, validateParams(messageIdParamSchema), validateBody(landingMessagePatchBodySchema), requireCollectionOperationAuthorization(), patchLandingMessageById);
 router.get('/tasks', requireAuth, requireCollectionOperationAuthorization(), getTasks);
 router.get('/to-do', requireAuth, requireCollectionOperationAuthorization(), getToDo);
 router.get('/people', requireAuth, requireCollectionOperationAuthorization(), getPeople);

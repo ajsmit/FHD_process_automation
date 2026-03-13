@@ -212,6 +212,6 @@ test('POST /api/v1/title-registration/landing-messages rejects student actor', a
       scope: 'faculty',
       message: '[route-smoke] unauthorized publish attempt',
     });
-  assert.equal(res.status, 400);
+  assert.equal(res.status, 403);
   assert.match(String(res.body.message ?? ''), /not authorized|only faculty\/system administrators/i);
 });

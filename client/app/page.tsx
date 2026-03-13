@@ -76,6 +76,9 @@ export default function Page() {
     student,
     caseRecord,
     formData,
+    facultyCalendar,
+    policyWarnings,
+    landingMessages,
     pipeline,
     toDoItems,
     tasks,
@@ -238,27 +241,37 @@ export default function Page() {
   return (
     <div className='min-h-screen p-4 md:p-8'>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className='mx-auto grid max-w-7xl gap-4 md:grid-cols-[220px_1fr]'>
-        <DashboardSidebar
-          modules={modules}
-          activeModule={activeModule}
-          onSelectModule={(moduleKey) => {
-            void loadModuleData(moduleKey);
-          }}
-        />
+        <div id='main-menu'>
+          <DashboardSidebar
+            modules={modules}
+            activeModule={activeModule}
+            onSelectModule={(moduleKey) => {
+              void loadModuleData(moduleKey);
+            }}
+          />
+        </div>
 
         <div className='space-y-4'>
-          <CaseLookupCard
-            studentNumber={studentNumber}
-            onStudentNumberChange={setStudentNumber}
-            loading={loading}
-            onCheckSasi={() => {
-              void runSasiCheck();
-            }}
-            student={student}
-            caseRecord={caseRecord}
-            statusLabel={statusLabel}
-            statusTone={statusTone}
-          />
+          <div id='landing'>
+            <CaseLookupCard
+              studentNumber={studentNumber}
+              onStudentNumberChange={setStudentNumber}
+              loading={loading}
+              onCheckSasi={() => {
+                void runSasiCheck();
+              }}
+              student={student}
+              caseRecord={caseRecord}
+              facultyCalendar={facultyCalendar}
+              policyWarnings={policyWarnings}
+              landingMessages={landingMessages}
+              statusLabel={statusLabel}
+              statusTone={statusTone}
+            />
+          </div>
+          <div className='rounded-xl border border-white/10 bg-surface2 px-3 py-2 text-sm'>
+            Need to manage Faculty deadlines or landing messages? Open <a className='text-accent underline' href='/admin-policy'>Policy Administration</a>.
+          </div>
 
           {activeModule === 'title_registration' && formData && caseRecord && (
             <>

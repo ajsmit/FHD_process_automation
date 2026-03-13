@@ -467,6 +467,86 @@ export async function seedDemoData(db: Knex): Promise<void> {
         active: true,
       },
       {
+        sasi_id: '1234568',
+        first_name: 'Liam',
+        last_name: 'Naidoo',
+        email: 'liam.naidoo@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234572',
+        first_name: 'Noah',
+        last_name: 'Jacobs',
+        email: 'noah.jacobs@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234569',
+        first_name: 'Aisha',
+        last_name: 'Petersen',
+        email: 'aisha.petersen@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234570',
+        first_name: 'Sipho',
+        last_name: 'Moyo',
+        email: 'sipho.moyo@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234571',
+        first_name: 'Carla',
+        last_name: 'Williams',
+        email: 'carla.williams@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234573',
+        first_name: 'Mila',
+        last_name: 'Fortuin',
+        email: 'mila.fortuin@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234575',
+        first_name: 'Riya',
+        last_name: 'Moodley',
+        email: 'riya.moodley@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
+        sasi_id: '1234576',
+        first_name: 'Daniel',
+        last_name: 'Solomons',
+        email: 'daniel.solomons@example.com',
+        role: 'student' as const,
+        staff_number: null,
+        departments: null,
+        active: true,
+      },
+      {
         sasi_id: 'STAFF-001',
         first_name: 'AJ',
         last_name: 'Smit',
@@ -542,6 +622,49 @@ export async function seedDemoData(db: Knex): Promise<void> {
       registration_active: row.registration_active ?? 1,
     }));
     await db('sasi_students').insert(normalizedSeedStudents).onConflict('student_number').merge();
+
+    const currentYear = new Date().getUTCFullYear();
+    const calendarSeeds = [
+      {
+        academic_year: currentYear,
+        rott_submission_deadline: `${currentYear}-03-31`,
+        progress_report_deadline: `${currentYear}-11-30`,
+        intention_to_submit_deadline: `${currentYear}-08-31`,
+        appoint_examiners_deadline: `${currentYear}-09-30`,
+        published_notice: `Faculty deadlines for ${currentYear}. Late or missing progress reports may block next-year registration.`,
+      },
+      {
+        academic_year: currentYear + 1,
+        rott_submission_deadline: `${currentYear + 1}-03-31`,
+        progress_report_deadline: `${currentYear + 1}-11-30`,
+        intention_to_submit_deadline: `${currentYear + 1}-08-31`,
+        appoint_examiners_deadline: `${currentYear + 1}-09-30`,
+        published_notice: `Faculty deadlines for ${currentYear + 1}. Update these dates when the Faculty calendar is confirmed.`,
+      },
+    ];
+    await db('faculty_process_calendar').insert(calendarSeeds).onConflict('academic_year').merge();
+    const existingLandingCountRow = await db('landing_messages').count<{ count: number }>('id as count').first();
+    const existingLandingCount = Number(existingLandingCountRow?.count ?? 0);
+    if (existingLandingCount === 0) {
+      await db('landing_messages').insert([
+        {
+          scope: 'faculty',
+          department_name: null,
+          message: 'Faculty reminder: ensure annual progress reports are submitted before the Faculty deadline to avoid next-year registration risk.',
+          active_from: `${currentYear}-01-01`,
+          active_until: `${currentYear}-12-31`,
+          created_by_user_id: null,
+        },
+        {
+          scope: 'department',
+          department_name: 'Biodiversity & Conservation Biology',
+          message: 'Department note: submit progression forms with complete supervisor comments to reduce return cycles.',
+          active_from: `${currentYear}-01-01`,
+          active_until: `${currentYear}-12-31`,
+          created_by_user_id: null,
+        },
+      ]);
+    }
 
     const repoRoot = resolveRepoRootForCsv();
     const departmentsCsvPath = path.join(repoRoot, 'uwc_natural_sciences_departments.csv');

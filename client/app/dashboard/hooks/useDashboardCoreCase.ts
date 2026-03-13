@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   chairpersonSign,
   checkSasi,
@@ -6,6 +6,8 @@ import {
   deptSendFaculty,
   deptReview,
   facultyReview,
+  getFacultyCalendar,
+  getLandingMessages,
   generatePrintPdf,
   getDirectoryStaff,
   getExternalAcademics,
@@ -16,7 +18,10 @@ import {
   resolveApiOrigin,
   type ExternalAcademicDirectory,
   type ExternalInviteStatus,
+  type FacultyProcessCalendar,
   type FormData,
+  type LandingMessage,
+  type PolicyWarning,
   type ReviewDecision,
   type SasiStudent,
   type StaffDirectory,
@@ -62,6 +67,9 @@ export function useDashboardCoreCase() {
   const [student, setStudent] = useState<SasiStudent | null>(null);
   const [caseRecord, setCaseRecord] = useState<TitleRegistrationCase | null>(null);
   const [formData, setFormData] = useState<FormData | null>(null);
+  const [facultyCalendar, setFacultyCalendar] = useState<FacultyProcessCalendar | null>(null);
+  const [policyWarnings, setPolicyWarnings] = useState<PolicyWarning[]>([]);
+  const [landingMessages, setLandingMessages] = useState<LandingMessage[]>([]);
   const [peopleDirectory, setPeopleDirectory] = useState<StaffDirectory[]>([]);
   const [bcbDirectory, setBcbDirectory] = useState<StaffDirectory[]>([]);
   const [externalDirectory, setExternalDirectory] = useState<ExternalAcademicDirectory[]>([]);
@@ -116,6 +124,17 @@ export function useDashboardCoreCase() {
     setInviteStatusByRole(next);
   }
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await getFacultyCalendar();
+        setFacultyCalendar(response.calendar);
+      } catch {
+        // Calendar visibility is non-blocking for case lookup.
+      }
+    })();
+  }, []);
+
   async function runSasiCheck(deps: RunSasiCheckDeps) {
     setLoading(true);
     setError(null);
@@ -129,6 +148,16 @@ export function useDashboardCoreCase() {
       setStudent(response.student);
       setCaseRecord(response.caseRecord);
       setFormData(response.formData);
+      setPolicyWarnings(response.policyWarnings ?? []);
+      if (response.facultyCalendar) {
+        setFacultyCalendar(response.facultyCalendar);
+      }
+      if (response.landingMessages) {
+        setLandingMessages(response.landingMessages);
+      } else {
+        const landing = await getLandingMessages({ caseId: response.caseRecord.id });
+        setLandingMessages(landing.data);
+      }
       setPdfPath(response.caseRecord.pdf_path);
       const [peopleResult, bcbResult, externalResult] = await Promise.all([
         getDirectoryStaff({ internalOnly: true }),
@@ -659,6 +688,9 @@ export function useDashboardCoreCase() {
     student,
     caseRecord,
     formData,
+    facultyCalendar,
+    policyWarnings,
+    landingMessages,
     peopleDirectory,
     bcbDirectory,
     externalDirectory,

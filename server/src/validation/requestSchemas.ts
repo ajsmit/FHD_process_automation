@@ -75,6 +75,47 @@ export const pipelineQuerySchema = z.object({
   caseId: z.string().regex(/^\d+$/, { message: 'caseId must be a positive integer string.' }).optional(),
 });
 
+export const calendarYearParamSchema = z.object({
+  year: z.string().regex(/^\d{4}$/, { message: 'year must be a 4-digit value.' }),
+});
+
+export const calendarQuerySchema = z.object({
+  year: z.string().regex(/^\d{4}$/, { message: 'year must be a 4-digit value.' }).optional(),
+});
+
+const calendarDateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must use YYYY-MM-DD format.' });
+
+export const calendarPatchBodySchema = z.object({
+  rottSubmissionDeadline: calendarDateString.nullish(),
+  progressReportDeadline: calendarDateString.nullish(),
+  intentionToSubmitDeadline: calendarDateString.nullish(),
+  appointExaminersDeadline: calendarDateString.nullish(),
+  publishedNotice: z.string().max(5000).nullish(),
+});
+
+export const messageIdParamSchema = z.object({
+  messageId: z.string().regex(/^\d+$/, { message: 'messageId must be a positive integer string.' }),
+});
+
+export const landingMessagesQuerySchema = z.object({
+  caseId: z.string().regex(/^\d+$/, { message: 'caseId must be a positive integer string.' }).optional(),
+  department: z.string().trim().min(1).max(255).optional(),
+});
+
+export const landingMessageBodySchema = z.object({
+  scope: z.enum(['faculty', 'department']),
+  departmentName: z.string().trim().min(1).max(255).optional().nullable(),
+  message: nonEmptyString.max(8000),
+  activeFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'activeFrom must use YYYY-MM-DD format.' }).optional().nullable(),
+  activeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'activeUntil must use YYYY-MM-DD format.' }).optional().nullable(),
+});
+
+export const landingMessagePatchBodySchema = z.object({
+  message: z.string().trim().min(1).max(8000).optional(),
+  activeFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'activeFrom must use YYYY-MM-DD format.' }).optional().nullable(),
+  activeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'activeUntil must use YYYY-MM-DD format.' }).optional().nullable(),
+});
+
 export const externalInviteCreateBodySchema = z.object({
   caseId: z.coerce.number().int().positive(),
   role: z.enum(['supervisor', 'admin', 'co1', 'co2']),

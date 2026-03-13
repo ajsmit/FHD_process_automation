@@ -34,6 +34,8 @@ import {
   runFacultyReviewTransition,
   runSupervisorReviewTransition,
 } from './workflow/titleRegistrationTransitions';
+import { getCasePolicyWarnings, type FacultyProcessCalendar, type PolicyWarning } from './facultyProcessCalendarService';
+import { listLandingMessages, type LandingMessage } from './landingMessagesService';
 
 export type {
   FormData,
@@ -1108,7 +1110,16 @@ async function hydrateCase(baseCase: TitleRegistrationCase): Promise<{ case: Tit
   return { case: baseCase, formData: normalizeLegacyFormData(JSON.parse(baseCase.form_data_json) as Record<string, unknown>), student };
 }
 
-export async function checkAndPrefill(studentNumber: string): Promise<{ eligible: boolean; reasons: string[]; student?: SasiStudent; caseRecord?: TitleRegistrationCase; formData?: FormData }> {
+export async function checkAndPrefill(studentNumber: string): Promise<{
+  eligible: boolean;
+  reasons: string[];
+  student?: SasiStudent;
+  caseRecord?: TitleRegistrationCase;
+  formData?: FormData;
+  policyWarnings?: PolicyWarning[];
+  facultyCalendar?: FacultyProcessCalendar;
+  landingMessages?: LandingMessage[];
+}> {
   const student = await getStudentByNumber(studentNumber);
   if (!student) {
     return { eligible: false, reasons: ['Student not found on SASI.'] };
@@ -1141,19 +1152,43 @@ export async function checkAndPrefill(studentNumber: string): Promise<{ eligible
   const hydrated = await hydrateCase(caseRecord);
   await syncSupervisorProfilesForCase(hydrated.case.id, hydrated.formData);
   await syncMouModuleStatus(hydrated.case.id);
-  return { eligible: true, reasons: [], student, caseRecord: hydrated.case, formData: hydrated.formData };
+  const { warnings, calendar } = await getCasePolicyWarnings(hydrated.case.id);
+  const landingMessages = await listLandingMessages(student.department);
+  return {
+    eligible: true,
+    reasons: [],
+    student,
+    caseRecord: hydrated.case,
+    formData: hydrated.formData,
+    policyWarnings: warnings,
+    facultyCalendar: calendar,
+    landingMessages,
+  };
 }
 
-export async function getCaseById(caseId: number): Promise<{ case: TitleRegistrationCase; formData: FormData; student: SasiStudent }> {
+export async function getCaseById(caseId: number): Promise<{
+  case: TitleRegistrationCase;
+  formData: FormData;
+  student: SasiStudent;
+  policyWarnings: PolicyWarning[];
+  facultyCalendar: FacultyProcessCalendar;
+  landingMessages: LandingMessage[];
+}> {
   const caseRecord = await db<TitleRegistrationCase>('title_registration_cases').where({ id: caseId }).first();
   if (!caseRecord) {
     throw new Error('Title registration case not found');
   }
-  return hydrateCase(caseRecord);
+  const hydrated = await hydrateCase(caseRecord);
+  const { warnings, calendar } = await getCasePolicyWarnings(caseId);
+  const landingMessages = await listLandingMessages(hydrated.student.department);
+  return { ...hydrated, policyWarnings: warnings, facultyCalendar: calendar, landingMessages };
 }
 
 export async function updateForm(caseId: number, formPatch: Partial<FormData>): Promise<{ case: TitleRegistrationCase; formData: FormData }> {
   const { case: caseRecord, formData } = await getCaseById(caseId);
+  if (caseRecord.case_status === 'approved') {
+    throw new Error('ROTT is canonical after Faculty approval and cannot be edited. Use the approved change-request forms for updates.');
+  }
   const readonlyFields: Array<keyof FormData> = [
     'Student Title',
     'Student First-Name',

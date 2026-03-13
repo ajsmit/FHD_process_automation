@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { isFacultyHdRepRole, isLegacyAdminRole, isSystemAdminRole } from '../auth/roleService';
 import {
   chairpersonSign,
   checkAndPrefill,
@@ -128,6 +129,13 @@ import {
   submitProgressReport,
 } from '../services/workflow/progressionModulesService';
 import type { FormData, MouFormData, ReviewDecision } from '../services/contracts/titleRegistration';
+import { getFacultyProcessCalendar, updateFacultyProcessCalendar } from '../services/facultyProcessCalendarService';
+import {
+  createLandingMessage,
+  listLandingMessages,
+  listManagedLandingMessages,
+  updateLandingMessage,
+} from '../services/landingMessagesService';
 import { toAppError } from '../errors/httpErrors';
 
 function parseCaseId(value: string): number {
@@ -330,6 +338,107 @@ export async function getNotifications(req: Request, res: Response): Promise<voi
     res.status(200).json({ data: notifications });
   } catch (error) {
     handleControllerError(res, error, { statusCode: 500, code: 'workflow_controller_error', message: 'Failed to load notifications' });
+  }
+}
+
+export async function getFacultyCalendar(req: Request, res: Response): Promise<void> {
+  try {
+    const year = typeof req.query.year === 'string' ? Number.parseInt(req.query.year, 10) : undefined;
+    const calendar = await getFacultyProcessCalendar(Number.isFinite(year) ? year : undefined);
+    res.status(200).json({ calendar });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load faculty calendar' });
+  }
+}
+
+export async function patchFacultyCalendar(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const canEditCalendar = isSystemAdminRole(actor.role) || isFacultyHdRepRole(actor.role) || isLegacyAdminRole(actor.role);
+    if (!canEditCalendar) {
+      res.status(403).json({ message: 'Only Faculty/system administrators can update annual process deadlines.' });
+      return;
+    }
+
+    const year = Number.parseInt(req.params.year, 10);
+    if (!Number.isFinite(year) || year < 2000 || year > 2999) {
+      throw new Error('Invalid calendar year. Use YYYY format.');
+    }
+
+    const patch = req.body as {
+      rottSubmissionDeadline?: string | null;
+      progressReportDeadline?: string | null;
+      intentionToSubmitDeadline?: string | null;
+      appointExaminersDeadline?: string | null;
+      publishedNotice?: string | null;
+    };
+
+    const calendar = await updateFacultyProcessCalendar(year, patch, actor.id);
+    res.status(200).json({ calendar });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update faculty calendar' });
+  }
+}
+
+export async function getLandingMessagesForView(req: Request, res: Response): Promise<void> {
+  try {
+    const caseId = typeof req.query.caseId === 'string' ? Number.parseInt(req.query.caseId, 10) : undefined;
+    const explicitDepartment = typeof req.query.department === 'string' ? req.query.department.trim() : '';
+    let department = explicitDepartment;
+    if (!department && Number.isFinite(caseId)) {
+      const caseData = await getCaseById(Number(caseId));
+      department = caseData.student.department;
+    }
+    const messages = await listLandingMessages(department || undefined);
+    res.status(200).json({ data: messages });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to load landing messages' });
+  }
+}
+
+export async function getManagedLandingMessagesView(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const messages = await listManagedLandingMessages(actor);
+    res.status(200).json({ data: messages });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 403, code: 'workflow_controller_error', message: 'Failed to load managed landing messages' });
+  }
+}
+
+export async function postLandingMessage(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const message = await createLandingMessage(actor, req.body as {
+      scope: 'faculty' | 'department';
+      departmentName?: string | null;
+      message: string;
+      activeFrom?: string | null;
+      activeUntil?: string | null;
+    });
+    res.status(201).json({ message });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to create landing message' });
+  }
+}
+
+export async function patchLandingMessageById(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = requireActor(req);
+    const messageId = Number.parseInt(req.params.messageId, 10);
+    if (!Number.isFinite(messageId) || messageId < 1) {
+      throw new Error('Invalid message id');
+    }
+    const message = await updateLandingMessage(actor, messageId, req.body as {
+      scope?: 'faculty' | 'department';
+      departmentName?: string | null;
+      message?: string;
+      activeFrom?: string | null;
+      activeUntil?: string | null;
+    });
+    res.status(200).json({ message });
+  } catch (error) {
+    handleControllerError(res, error, { statusCode: 400, code: 'workflow_controller_error', message: 'Failed to update landing message' });
   }
 }
 

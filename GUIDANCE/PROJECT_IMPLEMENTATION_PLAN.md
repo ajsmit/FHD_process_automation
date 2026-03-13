@@ -264,6 +264,9 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - department-message publish and downstream landing visibility,
     - unauthorized student write-path rejection.
   - validated with `npm run test:server` and `npm run test:e2e:ui`.
+  - review-readiness hardening follow-up (same date):
+    - normalized policy-admin authorization failures to `403` (replacing mixed `400/403` outcomes).
+    - bounded `/admin-policy` `?actor=` role simulation to non-production only.
 
 ### 2.2 In progress
 - None (closed on 2026-03-11).
