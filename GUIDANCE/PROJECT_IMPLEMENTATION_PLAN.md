@@ -1,6 +1,6 @@
 # PG Workflow Platform Implementation Plan
 
-Version: 2026-03-12  
+Version: 2026-03-13  
 Status: Rolling plan aligned to implemented code
 
 ## Boundaries
@@ -244,6 +244,13 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
   - artifact/workspace hygiene hardening:
     - expanded ignored Playwright runtime artifact paths (`blob-report`, `.playwright`, `.cache/ms-playwright`) to prevent generated-report VCS noise under alternate local reporter/cache modes.
     - validated no artifact tracking drift after full UI regression execution.
+- Reliability/operationalization tranche Section 5 completed on 2026-03-13:
+  - synchronized closure/status guidance for the tranche in:
+    - `PROJECT_IMPLEMENTATION_PLAN.md`
+    - `E2E_REGRESSION_STRATEGY.md`
+    - `REGRESSION_CHECKLIST.md`
+    - `NEXT_ITERATION_EXECUTION_SET_2026-03-13.md`
+  - OpenAPI regeneration intentionally not required because no API route/contract surface changed.
 
 ### 2.2 In progress
 - None (closed on 2026-03-11).
@@ -255,9 +262,7 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 - None (closed on 2026-03-12): Phase-C hardening and parity closure complete.
 
 ### 2.5 Next Iteration (upcoming)
-- Reliability/operationalization tranche after Phase-C closure.
-- Execution set is defined in:
-  - [NEXT_ITERATION_EXECUTION_SET_2026-03-13.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-13.md)
+- None (closed on 2026-03-13): reliability/operationalization tranche Sections 1-5 completed and synchronized.
 
 ## 3. Execution Guardrails
 1. Follow policy and mapping owners before implementation:

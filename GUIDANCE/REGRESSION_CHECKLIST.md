@@ -1,6 +1,6 @@
 # Regression Checklist
 
-Version: 2026-03-09
+Version: 2026-03-13
 Status: Active
 Use: Run before merge/release for any workflow-affecting change.
 
@@ -40,6 +40,8 @@ Use: Run before merge/release for any workflow-affecting change.
 1. To Do feed includes pending modules.
 2. To Do feed includes pending invites.
 3. To Do feed includes queued/failed notifications.
+4. Returned module states surface as `action_required` in `tasks` and `to-do`.
+5. Mixed same-module states across active cases remain case-scoped (no status bleed between cases).
 
 ## 7. Environment Portability
 1. Local mode works with SQLite + local SASI provider.
@@ -51,3 +53,7 @@ Use: Run before merge/release for any workflow-affecting change.
 2. Authenticated actors can invoke only the endpoints allowed by role matrix.
 3. Role-transition endpoints enforce case-stage + actor-role constraints.
 4. Tokenized external invite endpoints remain scoped to invite token semantics only.
+
+## 9. Deterministic Regression Protocol
+1. UI regression suite passes on consecutive executions without manual DB cleanup.
+2. Regression runs do not leave tracked/untracked generated artifact noise.
