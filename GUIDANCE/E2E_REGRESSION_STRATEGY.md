@@ -40,6 +40,11 @@ Covered scenarios:
   - explicit role authorization gate regressions:
     - `CHANGE_TITLE` supervisor-review rejection for student actor + supervisor acceptance path,
     - `PROGRESS_REPORT` dept/faculty review endpoint rejection matrix for unauthorized actors.
+- Policy administration regressions (`e2e/admin-policy.spec.ts`):
+  - faculty annual calendar update flow on `/admin-policy`,
+  - landing-page visibility parity for updated current-year faculty notice,
+  - department message publish flow and downstream landing visibility,
+  - unauthorized student write-path rejection on policy-admin endpoints.
 
 Companion server lifecycle regressions (kept alongside workflow integration tests):
 - File: `server/src/services/workflow/changeRequestModulesService.test.ts`
@@ -85,6 +90,13 @@ Companion server lifecycle regressions (kept alongside workflow integration test
 - Added progression module PDF parity regressions:
   - regenerated module PDFs for all six progression/exception modules after persisted form-data changes,
   - asserted artifact refresh behavior (stable path with updated output metadata).
+- Added policy administration service regressions:
+  - file: `server/src/services/policyAdministrationRegression.test.ts`
+  - annual faculty calendar update/read-back round-trip coverage,
+  - landing-message role/scope authorization coverage.
+- Added policy endpoint route/controller smoke regressions:
+  - file: `server/src/api/v1/routes/routesSmoke.test.ts`
+  - calendar and landing-message endpoint success/validation/authorization coverage.
 
 ## Design Principles Applied
 - Prefer stable selectors (`role`, `label`, heading-scoped sections) over brittle text snapshots.

@@ -54,6 +54,14 @@ Use: Run before merge/release for any workflow-affecting change.
 3. Role-transition endpoints enforce case-stage + actor-role constraints.
 4. Tokenized external invite endpoints remain scoped to invite token semantics only.
 
-## 9. Deterministic Regression Protocol
+## 9. Policy Administration (Deadlines + Landing Messages)
+1. Faculty/system actors can update annual Faculty deadline calendar.
+2. Unauthorized actors cannot update annual Faculty deadline calendar.
+3. Faculty message publish/update paths behave as expected.
+4. Dept HD actors can publish/update messages only for assigned departments.
+5. Updated current-year Faculty notice is visible on landing before workflow progression.
+6. Department message visibility is scoped to matching student department.
+
+## 10. Deterministic Regression Protocol
 1. UI regression suite passes on consecutive executions without manual DB cleanup.
 2. Regression runs do not leave tracked/untracked generated artifact noise.

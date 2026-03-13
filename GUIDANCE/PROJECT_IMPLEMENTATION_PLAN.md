@@ -251,6 +251,19 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - `REGRESSION_CHECKLIST.md`
     - `NEXT_ITERATION_EXECUTION_SET_2026-03-13.md`
   - OpenAPI regeneration intentionally not required because no API route/contract surface changed.
+- Policy administration regression tranche completed on 2026-03-13:
+  - added dedicated service-level regressions in `server/src/services/policyAdministrationRegression.test.ts` for:
+    - annual faculty calendar update/read-back round-trip,
+    - landing-message role authorization and department scoping constraints.
+  - added policy endpoint route/controller smoke coverage in `server/src/api/v1/routes/routesSmoke.test.ts` for:
+    - `GET/PATCH /title-registration/faculty-calendar`,
+    - `GET/POST/PATCH /title-registration/landing-messages*`,
+    - validation and unauthorized-role rejection paths.
+  - added UI E2E policy-admin regressions in `e2e/admin-policy.spec.ts` for:
+    - faculty calendar update and landing-page visibility,
+    - department-message publish and downstream landing visibility,
+    - unauthorized student write-path rejection.
+  - validated with `npm run test:server` and `npm run test:e2e:ui`.
 
 ### 2.2 In progress
 - None (closed on 2026-03-11).
