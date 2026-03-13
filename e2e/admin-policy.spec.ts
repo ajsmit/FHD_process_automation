@@ -1,16 +1,6 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
-const API_BASE = 'http://localhost:3001/api/v1';
 const STUDENT_SASI_ID = '1234567';
-
-async function devLogin(request: APIRequestContext, sasiId: string): Promise<string> {
-  const response = await request.post(`${API_BASE}/auth/dev-login`, {
-    data: { sasiId },
-  });
-  expect(response.ok()).toBeTruthy();
-  const body = (await response.json()) as { token: string };
-  return body.token;
-}
 
 async function openLandingCase(page: Page, studentNumber: string): Promise<void> {
   await page.goto('/');
@@ -24,7 +14,7 @@ test.describe('Policy Administration UI Regressions', () => {
     const year = String(new Date().getUTCFullYear());
     const uniqueNotice = `Policy regression notice ${Date.now()}`;
 
-    await page.goto('/admin-policy');
+    await page.goto('/admin-policy?actor=faculty');
     await expect(page.getByRole('heading', { name: 'Policy and Deadline Administration' })).toBeVisible();
 
     await page.getByLabel('Academic year').fill(year);
@@ -43,7 +33,7 @@ test.describe('Policy Administration UI Regressions', () => {
   test('dept HD can publish department message and landing shows it for matching department', async ({ page }) => {
     const uniqueMessage = `Department policy bulletin ${Date.now()}`;
 
-    await page.goto('/admin-policy');
+    await page.goto('/admin-policy?actor=dept');
     await page.getByRole('textbox', { name: 'Department', exact: true }).fill('Biodiversity & Conservation Biology');
     await page.getByLabel('New Department message').fill(uniqueMessage);
     await page.getByRole('button', { name: 'Publish Department Message' }).click();
@@ -55,24 +45,19 @@ test.describe('Policy Administration UI Regressions', () => {
     await expect(page.getByText(uniqueMessage)).toBeVisible();
   });
 
-  test('unauthorized student actor is blocked from policy-admin write endpoints', async ({ request }) => {
-    const studentToken = await devLogin(request, STUDENT_SASI_ID);
+  test('unauthorized student actor is blocked from policy-admin write actions through UI', async ({ page }) => {
     const year = String(new Date().getUTCFullYear());
 
-    const calendarResponse = await request.patch(`${API_BASE}/title-registration/faculty-calendar/${year}`, {
-      headers: { Authorization: `Bearer ${studentToken}` },
-      data: { publishedNotice: `Unauthorized attempt ${Date.now()}` },
-    });
-    expect(calendarResponse.status()).toBe(403);
-    const calendarBody = (await calendarResponse.json()) as { message?: string };
-    expect(calendarBody.message ?? '').toMatch(/not authorized|only faculty\/system administrators/i);
+    await page.goto('/admin-policy?actor=student');
+    await expect(page.getByRole('heading', { name: 'Policy and Deadline Administration' })).toBeVisible();
 
-    const messageResponse = await request.post(`${API_BASE}/title-registration/landing-messages`, {
-      headers: { Authorization: `Bearer ${studentToken}` },
-      data: { scope: 'faculty', message: `Unauthorized publish ${Date.now()}` },
-    });
-    expect([400, 403]).toContain(messageResponse.status());
-    const messageBody = (await messageResponse.json()) as { message?: string };
-    expect(messageBody.message ?? '').toMatch(/not authorized|only faculty\/system administrators/i);
+    await page.getByLabel('Academic year').fill(year);
+    await page.getByLabel('Faculty published notice').fill(`Unauthorized UI attempt ${Date.now()}`);
+    await page.getByRole('button', { name: 'Save Faculty Calendar' }).click();
+    await expect(page.getByText(/only faculty\/system administrators|not authorized/i)).toBeVisible();
+
+    await page.getByLabel('New Faculty message').fill(`Unauthorized faculty publish ${Date.now()}`);
+    await page.getByRole('button', { name: 'Publish Faculty Message' }).click();
+    await expect(page.getByText(/not authorized|failed to create landing message/i)).toBeVisible();
   });
 });

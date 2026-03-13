@@ -60,6 +60,34 @@ export interface SasiStudent {
   ethics_ref_number: string | null;
 }
 
+export interface FacultyProcessCalendar {
+  academicYear: number;
+  rottSubmissionDeadline: string | null;
+  progressReportDeadline: string | null;
+  intentionToSubmitDeadline: string | null;
+  appointExaminersDeadline: string | null;
+  publishedNotice: string | null;
+  updatedAt: string | null;
+}
+
+export interface PolicyWarning {
+  code: 'progress_report_due' | 'progress_report_overdue';
+  severity: 'info' | 'warning';
+  message: string;
+  deadline: string | null;
+}
+
+export interface LandingMessage {
+  id: number;
+  scope: 'faculty' | 'department';
+  departmentName: string | null;
+  message: string;
+  activeFrom: string | null;
+  activeUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProgressReportFormData {
   'Student Full Name': string;
   'Student Number': string;
@@ -360,9 +388,12 @@ const demoActorSasiIds = {
   chair: 'STAFF-005',
   faculty: 'STAFF-004',
 } as const;
+type AdminActor = 'faculty' | 'dept';
+export type PolicyAdminActor = AdminActor | 'student';
 
 const tokenCacheByActor = new Map<string, string>();
 let activeStudentActorSasiId: string = demoActorSasiIds.student;
+let activePolicyAdminActor: PolicyAdminActor = 'faculty';
 const SASI_STUDENT_NUMBER_PATTERN = /^\d{7}$/;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -433,12 +464,31 @@ async function studentAuthHeaders(): Promise<Record<string, string>> {
   return authHeadersForActor(activeStudentActorSasiId);
 }
 
+export function setActivePolicyAdminActor(actor: PolicyAdminActor): void {
+  activePolicyAdminActor = actor;
+}
+
+function resolvePolicyAdminActor(actor?: PolicyAdminActor): PolicyAdminActor {
+  return actor ?? activePolicyAdminActor;
+}
+
+async function policyAdminAuthHeaders(actor?: PolicyAdminActor): Promise<Record<string, string>> {
+  const resolved = resolvePolicyAdminActor(actor);
+  if (resolved === 'student') {
+    return authHeadersForActor(demoActorSasiIds.student);
+  }
+  return authHeadersForActor(demoActorSasiIds[resolved]);
+}
+
 export async function checkSasi(studentNumber: string): Promise<{
   eligible: boolean;
   reasons: string[];
   student?: SasiStudent;
   caseRecord?: TitleRegistrationCase;
   formData?: FormData;
+  policyWarnings?: PolicyWarning[];
+  facultyCalendar?: FacultyProcessCalendar;
+  landingMessages?: LandingMessage[];
 }> {
   const normalizedStudentNumber = studentNumber.trim();
   if (!SASI_STUDENT_NUMBER_PATTERN.test(normalizedStudentNumber)) {
@@ -449,6 +499,80 @@ export async function checkSasi(studentNumber: string): Promise<{
   }
   const headers = await studentAuthHeaders();
   return request(`/title-registration/sasi/${studentNumber}/check`, { headers });
+}
+
+export async function getFacultyCalendar(year?: number): Promise<{ calendar: FacultyProcessCalendar }> {
+  const query = typeof year === 'number' ? `?year=${year}` : '';
+  const headers = await studentAuthHeaders();
+  return request(`/title-registration/faculty-calendar${query}`, { headers });
+}
+
+export async function patchFacultyCalendar(
+  year: number,
+  patch: {
+    rottSubmissionDeadline?: string | null;
+    progressReportDeadline?: string | null;
+    intentionToSubmitDeadline?: string | null;
+    appointExaminersDeadline?: string | null;
+    publishedNotice?: string | null;
+  },
+  actor?: PolicyAdminActor,
+): Promise<{ calendar: FacultyProcessCalendar }> {
+  const headers = await policyAdminAuthHeaders(actor);
+  return request(`/title-registration/faculty-calendar/${year}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function getLandingMessages(params?: { caseId?: number; department?: string }): Promise<{ data: LandingMessage[] }> {
+  const query = new URLSearchParams();
+  if (typeof params?.caseId === 'number') query.set('caseId', String(params.caseId));
+  if (params?.department?.trim()) query.set('department', params.department.trim());
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const headers = await studentAuthHeaders();
+  return request(`/title-registration/landing-messages${suffix}`, { headers });
+}
+
+export async function getManagedLandingMessages(actor?: PolicyAdminActor): Promise<{ data: LandingMessage[] }> {
+  const headers = await policyAdminAuthHeaders(actor);
+  return request('/title-registration/landing-messages/manage', { headers });
+}
+
+export async function createLandingMessage(
+  payload: {
+    scope: 'faculty' | 'department';
+    departmentName?: string | null;
+    message: string;
+    activeFrom?: string | null;
+    activeUntil?: string | null;
+  },
+  actor?: PolicyAdminActor,
+): Promise<{ message: LandingMessage }> {
+  const headers = await policyAdminAuthHeaders(actor);
+  return request('/title-registration/landing-messages', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function patchLandingMessage(
+  messageId: number,
+  payload: {
+    message?: string;
+    activeFrom?: string | null;
+    activeUntil?: string | null;
+  },
+  actor?: PolicyAdminActor,
+): Promise<{ message: LandingMessage }> {
+  const headers = await policyAdminAuthHeaders(actor);
+  return request(`/title-registration/landing-messages/${messageId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function patchForm(caseId: number, patch: Partial<FormData>): Promise<{ case: TitleRegistrationCase; formData: FormData }> {
