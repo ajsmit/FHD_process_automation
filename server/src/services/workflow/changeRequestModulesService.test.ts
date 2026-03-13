@@ -1,5 +1,6 @@
 import test, { after, afterEach, before } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'fs/promises';
 import type { Request, Response } from 'express';
 import db from '../../db/knex';
 import { postLogin, postLogout, postProviderLogin } from '../../controllers/authController';
@@ -52,6 +53,12 @@ import {
   reviewSupervisorSummativeReportByFaculty,
   reviewUpgradeMscToPhdByDept,
   reviewUpgradeMscToPhdByFaculty,
+  printLeaveOfAbsence,
+  printOtherRequest,
+  printProgressReport,
+  printReadmissionRequest,
+  printSupervisorSummativeReport,
+  printUpgradeMscToPhd,
   reviewProgressReportByDept,
   reviewProgressReportByFaculty,
   submitLeaveOfAbsence,
@@ -61,12 +68,13 @@ import {
   submitUpgradeMscToPhd,
   submitProgressReport,
 } from './progressionModulesService';
-import { checkAndPrefill, getCaseById, updateForm } from '../titleRegistrationWorkflowService';
+import { checkAndPrefill, getCaseById, listPipeline, listTasks, listToDoItems, updateForm } from '../titleRegistrationWorkflowService';
 import {
   getOrCreateAppointArbiter,
   getOrCreateAppointExaminers,
   getOrCreateChangeExaminers,
   getOrCreateExaminerSummaryCv,
+  getOrCreateIntentionToSubmit,
   reviewAppointArbiterByDept,
   reviewAppointArbiterByFaculty,
   reviewAppointExaminersByChairperson,
@@ -255,7 +263,7 @@ function makeLoginReq(input: { identifier: string; password: string; ip?: string
   } as unknown as Request;
 }
 
-async function createFixtureCase(): Promise<{ caseId: number; studentActor: Actor }> {
+async function createFixtureCase(options?: { degreeLevel?: 'MSC' | 'PHD' }): Promise<{ caseId: number; studentActor: Actor }> {
   const studentNumber = `T${Date.now()}${Math.floor(Math.random() * 10000)}`;
   const [studentId] = await db('sasi_students').insert({
     student_number: studentNumber,
@@ -265,7 +273,7 @@ async function createFixtureCase(): Promise<{ caseId: number; studentActor: Acto
     email: `${studentNumber.toLowerCase()}@example.com`,
     faculty: 'Natural Sciences',
     department: 'Biodiversity & Conservation Biology',
-    degree_level: 'PHD',
+    degree_level: options?.degreeLevel ?? 'PHD',
     degree_type: 'FULL_THESIS',
     registration_type: 'FULL_TIME',
     registration_active: 1,
@@ -335,8 +343,31 @@ async function getModuleEntry(caseId: number, moduleName: string): Promise<{ sta
   return { status: String(row.status), summary: String(row.summary) };
 }
 
+function findTaskModuleStatus(
+  taskRows: Array<Record<string, unknown>>,
+  caseId: number,
+  moduleName: string,
+): string | undefined {
+  const row = taskRows.find((item) => Number(item.case_id) === caseId && String(item.module_name) === moduleName);
+  return row ? String(row.status) : undefined;
+}
+
+function findToDoModuleTitle(
+  toDoRows: Array<Record<string, unknown>>,
+  caseId: number,
+  moduleName: string,
+): string | undefined {
+  const row = toDoRows.find(
+    (item) => String(item.type) === 'module'
+      && Number(item.case_id) === caseId
+      && String(item.title).startsWith(`${moduleName} (`),
+  );
+  return row ? String(row.title) : undefined;
+}
+
 async function approveIts(caseId: number, studentActor: Actor): Promise<void> {
   await markMouSubmitted(caseId);
+  await submitProgressReportPrerequisite(caseId, studentActor);
   await updateIntentionToSubmit(studentActor, caseId, {
     'Submission type': 'Full thesis',
     'Intended submission date': '2027-11-30',
@@ -369,6 +400,33 @@ async function approveAppointExaminers(caseId: number, studentActor: Actor): Pro
   await reviewAppointExaminersByDept(deptActor, caseId, 'approved');
   await reviewAppointExaminersByChairperson(chairActor, caseId, 'approved');
   await reviewAppointExaminersByFaculty(facultyActor, caseId, 'approved');
+}
+
+async function submitProgressReportPrerequisite(caseId: number, studentActor: Actor): Promise<void> {
+  const progress = await getProgressReport(studentActor, caseId);
+  if (progress.record.status !== 'draft' && !progress.record.status.startsWith('returned_')) {
+    return;
+  }
+  await patchProgressReport(studentActor, caseId, {
+    'Reporting period': '2026 Q1',
+    'Research progress summary': 'Prerequisite report submitted for progression workflow eligibility.',
+    'Ethics compliance status': 'Compliant',
+  });
+  await submitProgressReport(studentActor, caseId);
+}
+
+async function submitLeaveOfAbsencePrerequisite(caseId: number, studentActor: Actor): Promise<void> {
+  await submitProgressReportPrerequisite(caseId, studentActor);
+  await patchLeaveOfAbsence(studentActor, caseId, {
+    'Leave start date': '2026-06-01',
+    'Leave end date': '2026-07-31',
+    'Reason for leave': 'Prerequisite leave context for readmission testing.',
+  });
+  await submitLeaveOfAbsence(studentActor, caseId);
+}
+
+async function prepareUpgradePrerequisite(caseId: number, studentActor: Actor): Promise<void> {
+  await submitProgressReportPrerequisite(caseId, studentActor);
 }
 
 test('CHANGE_TITLE submit gate rejects identical proposed title', async () => {
@@ -469,6 +527,7 @@ test('ADD_CO_SUPERVISOR final approval updates co-supervisor slot in canonical r
 test('INTENTION_TO_SUBMIT supports return-and-resubmit rework loop', async () => {
   const { caseId, studentActor } = await createFixtureCase();
   await markMouSubmitted(caseId);
+  await submitProgressReportPrerequisite(caseId, studentActor);
 
   await updateIntentionToSubmit(studentActor, caseId, {
     'Submission type': 'Full thesis',
@@ -495,6 +554,16 @@ test('INTENTION_TO_SUBMIT supports return-and-resubmit rework loop', async () =>
 
   record = await reviewIntentionToSubmitByDept(deptActor, caseId, 'approved');
   assert.equal(record.status, 'approved');
+});
+
+test('INTENTION_TO_SUBMIT rejects creation before PROGRESS_REPORT submission', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await markMouSubmitted(caseId);
+
+  await assert.rejects(
+    () => getOrCreateIntentionToSubmit(studentActor, caseId),
+    /PROGRESS_REPORT must be submitted before this module can start/i,
+  );
 });
 
 test('APPOINT_EXAMINERS enforces review order and module_entries audit state', async () => {
@@ -701,6 +770,7 @@ test('PROGRESS_REPORT enforces review order and supports return-resubmit cycle',
 
 test('LEAVE_OF_ABSENCE prefill is coherent and supports full approval path', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
 
   const initial = await getLeaveOfAbsence(studentActor, caseId);
   assert.equal(initial.formData['Student Number'], studentActor.sasiId);
@@ -729,8 +799,18 @@ test('LEAVE_OF_ABSENCE prefill is coherent and supports full approval path', asy
   assert.match(approvedEntry?.summary ?? '', /approved/i);
 });
 
+test('LEAVE_OF_ABSENCE rejects creation before PROGRESS_REPORT submission', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+
+  await assert.rejects(
+    () => getLeaveOfAbsence(studentActor, caseId),
+    /PROGRESS_REPORT must be submitted before this module can start/i,
+  );
+});
+
 test('LEAVE_OF_ABSENCE enforces review order and supports return-resubmit cycle', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
   await patchLeaveOfAbsence(studentActor, caseId, {
     'Leave start date': '2026-07-01',
     'Leave end date': '2026-08-31',
@@ -764,6 +844,7 @@ test('LEAVE_OF_ABSENCE enforces review order and supports return-resubmit cycle'
 
 test('READMISSION_REQUEST prefill is coherent and supports full approval path', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitLeaveOfAbsencePrerequisite(caseId, studentActor);
 
   const initial = await getReadmissionRequest(studentActor, caseId);
   assert.equal(initial.formData['Student Number'], studentActor.sasiId);
@@ -794,6 +875,7 @@ test('READMISSION_REQUEST prefill is coherent and supports full approval path', 
 
 test('READMISSION_REQUEST enforces review order and supports return-resubmit cycle', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitLeaveOfAbsencePrerequisite(caseId, studentActor);
   await patchReadmissionRequest(studentActor, caseId, {
     'Requested readmission date': '2026-11-01',
     'Reason for readmission': 'Student has met preconditions for reinstatement.',
@@ -824,8 +906,19 @@ test('READMISSION_REQUEST enforces review order and supports return-resubmit cyc
   assert.equal(record.status, 'approved');
 });
 
-test('UPGRADE_MSC_TO_PHD prefill is coherent and supports full approval path', async () => {
+test('READMISSION_REQUEST rejects creation before LEAVE_OF_ABSENCE submission', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
+
+  await assert.rejects(
+    () => getReadmissionRequest(studentActor, caseId),
+    /LEAVE_OF_ABSENCE must be submitted before this module can start/i,
+  );
+});
+
+test('UPGRADE_MSC_TO_PHD prefill is coherent and supports full approval path', async () => {
+  const { caseId, studentActor } = await createFixtureCase({ degreeLevel: 'MSC' });
+  await prepareUpgradePrerequisite(caseId, studentActor);
 
   const initial = await getUpgradeMscToPhd(studentActor, caseId);
   assert.equal(initial.formData['Student Number'], studentActor.sasiId);
@@ -852,8 +945,27 @@ test('UPGRADE_MSC_TO_PHD prefill is coherent and supports full approval path', a
   assert.match(approvedEntry?.summary ?? '', /approved/i);
 });
 
-test('UPGRADE_MSC_TO_PHD enforces review order and supports return-resubmit cycle', async () => {
+test('UPGRADE_MSC_TO_PHD rejects non-masters registrations', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+
+  await assert.rejects(
+    () => getUpgradeMscToPhd(studentActor, caseId),
+    /requires an MSc\/Masters baseline registration/i,
+  );
+});
+
+test('UPGRADE_MSC_TO_PHD rejects creation before PROGRESS_REPORT submission', async () => {
+  const { caseId, studentActor } = await createFixtureCase({ degreeLevel: 'MSC' });
+
+  await assert.rejects(
+    () => getUpgradeMscToPhd(studentActor, caseId),
+    /PROGRESS_REPORT must be submitted before this module can start/i,
+  );
+});
+
+test('UPGRADE_MSC_TO_PHD enforces review order and supports return-resubmit cycle', async () => {
+  const { caseId, studentActor } = await createFixtureCase({ degreeLevel: 'MSC' });
+  await prepareUpgradePrerequisite(caseId, studentActor);
   await patchUpgradeMscToPhd(studentActor, caseId, {
     'Upgrade motivation': 'Baseline upgrade rationale for progression.',
     'Research progress evidence': 'Baseline evidence for doctoral readiness.',
@@ -880,7 +992,9 @@ test('UPGRADE_MSC_TO_PHD enforces review order and supports return-resubmit cycl
 });
 
 test('SUPERVISOR_SUMMATIVE_REPORT supports supervisor-authored full approval path', async () => {
-  const { caseId } = await createFixtureCase();
+  const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
+  await approveAppointExaminers(caseId, studentActor);
 
   const initial = await getSupervisorSummativeReport(supervisorActor, caseId);
   assert.equal(initial.record.status, 'draft');
@@ -904,8 +1018,26 @@ test('SUPERVISOR_SUMMATIVE_REPORT supports supervisor-authored full approval pat
   assert.equal(record.status, 'approved');
 });
 
+test('SUPERVISOR_SUMMATIVE_REPORT rejects creation before ITS and examiner context', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
+
+  await assert.rejects(
+    () => getSupervisorSummativeReport(supervisorActor, caseId),
+    /INTENTION_TO_SUBMIT must be submitted before this module can start/i,
+  );
+
+  await approveIts(caseId, studentActor);
+  await assert.rejects(
+    () => getSupervisorSummativeReport(supervisorActor, caseId),
+    /requires APPOINT_EXAMINERS or CHANGE_EXAMINERS to be submitted/i,
+  );
+});
+
 test('SUPERVISOR_SUMMATIVE_REPORT enforces supervisor edit role and rework loop', async () => {
   const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
+  await approveAppointExaminers(caseId, studentActor);
 
   await assert.rejects(
     () => patchSupervisorSummativeReport(studentActor, caseId, { 'Summative period': 'attempted student edit' }),
@@ -981,6 +1113,207 @@ test('OTHER_REQUEST enforces review order and supports return-resubmit cycle', a
   await reviewOtherRequestByDept(deptActor, caseId, 'approved');
   record = await reviewOtherRequestByFaculty(facultyActor, caseId, 'approved');
   assert.equal(record.status, 'approved');
+});
+
+test('progression module entries surface across pipeline/tasks/to-do while in progress', async () => {
+  const standard = await createFixtureCase();
+  const msc = await createFixtureCase({ degreeLevel: 'MSC' });
+
+  await patchProgressReport(standard.studentActor, standard.caseId, {
+    'Reporting period': '2026 Q3',
+    'Research progress summary': 'Operations-feed visibility prerequisite submission.',
+    'Ethics compliance status': 'Compliant',
+  });
+  await submitProgressReport(standard.studentActor, standard.caseId);
+
+  await getLeaveOfAbsence(standard.studentActor, standard.caseId);
+  await patchLeaveOfAbsence(standard.studentActor, standard.caseId, {
+    'Leave start date': '2026-07-01',
+    'Leave end date': '2026-09-30',
+    'Reason for leave': 'Operational surfacing scenario.',
+  });
+  await submitLeaveOfAbsence(standard.studentActor, standard.caseId);
+  await getReadmissionRequest(standard.studentActor, standard.caseId);
+  await approveAppointExaminers(standard.caseId, standard.studentActor);
+  await getSupervisorSummativeReport(supervisorActor, standard.caseId);
+  await getOtherRequest(standard.studentActor, standard.caseId);
+
+  await submitProgressReportPrerequisite(msc.caseId, msc.studentActor);
+  await getUpgradeMscToPhd(msc.studentActor, msc.caseId);
+
+  const pipelineRows = await listPipeline();
+  assert.ok(pipelineRows.some((row) => Number(row.id) === standard.caseId));
+  assert.ok(pipelineRows.some((row) => Number(row.id) === msc.caseId));
+
+  const taskRows = await listTasks();
+  const toDoRows = await listToDoItems();
+  const expected: Array<{ caseId: number; moduleName: string }> = [
+    { caseId: standard.caseId, moduleName: 'progress_report' },
+    { caseId: standard.caseId, moduleName: 'leave_of_absence' },
+    { caseId: standard.caseId, moduleName: 'readmission_request' },
+    { caseId: standard.caseId, moduleName: 'supervisor_summative_report' },
+    { caseId: standard.caseId, moduleName: 'other_request' },
+    { caseId: msc.caseId, moduleName: 'upgrade_msc_to_phd' },
+  ];
+  for (const item of expected) {
+    assert.equal(findTaskModuleStatus(taskRows, item.caseId, item.moduleName), 'in_progress');
+    assert.equal(findToDoModuleTitle(toDoRows, item.caseId, item.moduleName), `${item.moduleName} (in_progress)`);
+  }
+});
+
+test('returned progression modules surface as action_required in tasks/to-do', async () => {
+  const { caseId, studentActor } = await createFixtureCase();
+  await submitProgressReportPrerequisite(caseId, studentActor);
+  await patchLeaveOfAbsence(studentActor, caseId, {
+    'Leave start date': '2026-08-01',
+    'Leave end date': '2026-09-15',
+    'Reason for leave': 'Action-required operations-feed assertion scenario.',
+  });
+  await submitLeaveOfAbsence(studentActor, caseId);
+  await reviewLeaveOfAbsenceByDept(deptActor, caseId, 'returned');
+
+  const taskRows = await listTasks();
+  const toDoRows = await listToDoItems();
+  assert.equal(findTaskModuleStatus(taskRows, caseId, 'leave_of_absence'), 'action_required');
+  assert.equal(findToDoModuleTitle(toDoRows, caseId, 'leave_of_absence'), 'leave_of_absence (action_required)');
+});
+
+test('operations feed keeps case-scoped status parity across mixed leave states', async () => {
+  const returnedCase = await createFixtureCase();
+  const inProgressCase = await createFixtureCase();
+
+  await submitProgressReportPrerequisite(returnedCase.caseId, returnedCase.studentActor);
+  await submitProgressReportPrerequisite(inProgressCase.caseId, inProgressCase.studentActor);
+
+  await patchLeaveOfAbsence(returnedCase.studentActor, returnedCase.caseId, {
+    'Leave start date': '2026-08-01',
+    'Leave end date': '2026-09-01',
+    'Reason for leave': 'Returned-state operations feed parity case.',
+  });
+  await submitLeaveOfAbsence(returnedCase.studentActor, returnedCase.caseId);
+  await reviewLeaveOfAbsenceByDept(deptActor, returnedCase.caseId, 'returned');
+
+  await patchLeaveOfAbsence(inProgressCase.studentActor, inProgressCase.caseId, {
+    'Leave start date': '2026-10-01',
+    'Leave end date': '2026-11-15',
+    'Reason for leave': 'In-progress operations feed parity case.',
+  });
+  await submitLeaveOfAbsence(inProgressCase.studentActor, inProgressCase.caseId);
+
+  const pipelineRows = await listPipeline();
+  assert.ok(pipelineRows.some((row) => Number(row.id) === returnedCase.caseId));
+  assert.ok(pipelineRows.some((row) => Number(row.id) === inProgressCase.caseId));
+
+  const taskRows = await listTasks();
+  const leaveTaskRows = taskRows.filter((row) => String(row.module_name) === 'leave_of_absence');
+  assert.ok(leaveTaskRows.some((row) => Number(row.case_id) === returnedCase.caseId));
+  assert.ok(leaveTaskRows.some((row) => Number(row.case_id) === inProgressCase.caseId));
+  assert.equal(findTaskModuleStatus(taskRows, returnedCase.caseId, 'leave_of_absence'), 'action_required');
+  assert.equal(findTaskModuleStatus(taskRows, inProgressCase.caseId, 'leave_of_absence'), 'in_progress');
+
+  const toDoRows = await listToDoItems();
+  assert.equal(findToDoModuleTitle(toDoRows, returnedCase.caseId, 'leave_of_absence'), 'leave_of_absence (action_required)');
+  assert.equal(findToDoModuleTitle(toDoRows, inProgressCase.caseId, 'leave_of_absence'), 'leave_of_absence (in_progress)');
+});
+
+test('progression module PDF parity regenerates artifacts from persisted DB state', async () => {
+  const standard = await createFixtureCase();
+  const msc = await createFixtureCase({ degreeLevel: 'MSC' });
+
+  await patchProgressReport(standard.studentActor, standard.caseId, {
+    'Reporting period': '2026 baseline',
+    'Research progress summary': 'Initial progress report payload for PDF parity baseline.',
+    'Ethics compliance status': 'Compliant',
+  });
+  let first = await printProgressReport(standard.studentActor, standard.caseId);
+  let firstStats = await fs.stat(first.pdfPath);
+  await patchProgressReport(standard.studentActor, standard.caseId, {
+    'Research progress summary': 'Updated progress report payload '.repeat(18),
+  });
+  let second = await printProgressReport(standard.studentActor, standard.caseId);
+  let secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
+
+  await submitProgressReportPrerequisite(standard.caseId, standard.studentActor);
+  await patchLeaveOfAbsence(standard.studentActor, standard.caseId, {
+    'Leave start date': '2026-06-01',
+    'Leave end date': '2026-07-31',
+    'Reason for leave': 'Initial leave payload for PDF parity baseline.',
+  });
+  first = await printLeaveOfAbsence(standard.studentActor, standard.caseId);
+  firstStats = await fs.stat(first.pdfPath);
+  await patchLeaveOfAbsence(standard.studentActor, standard.caseId, {
+    'Reason for leave': 'Updated leave payload '.repeat(18),
+  });
+  second = await printLeaveOfAbsence(standard.studentActor, standard.caseId);
+  secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
+  await submitLeaveOfAbsence(standard.studentActor, standard.caseId);
+
+  await patchReadmissionRequest(standard.studentActor, standard.caseId, {
+    'Requested readmission date': '2026-08-15',
+    'Reason for readmission': 'Initial readmission payload for PDF parity baseline.',
+    'Academic recovery plan': 'Initial recovery plan content.',
+  });
+  first = await printReadmissionRequest(standard.studentActor, standard.caseId);
+  firstStats = await fs.stat(first.pdfPath);
+  await patchReadmissionRequest(standard.studentActor, standard.caseId, {
+    'Reason for readmission': 'Updated readmission payload '.repeat(18),
+  });
+  second = await printReadmissionRequest(standard.studentActor, standard.caseId);
+  secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
+
+  await submitProgressReportPrerequisite(msc.caseId, msc.studentActor);
+  await patchUpgradeMscToPhd(msc.studentActor, msc.caseId, {
+    'Upgrade motivation': 'Initial upgrade payload for PDF parity baseline.',
+    'Research progress evidence': 'Initial evidence payload.',
+    'Supervisor recommendation': 'Supportive recommendation.',
+  });
+  first = await printUpgradeMscToPhd(msc.studentActor, msc.caseId);
+  firstStats = await fs.stat(first.pdfPath);
+  await patchUpgradeMscToPhd(msc.studentActor, msc.caseId, {
+    'Research progress evidence': 'Updated upgrade evidence payload '.repeat(18),
+  });
+  second = await printUpgradeMscToPhd(msc.studentActor, msc.caseId);
+  secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
+
+  await approveAppointExaminers(standard.caseId, standard.studentActor);
+  await patchSupervisorSummativeReport(supervisorActor, standard.caseId, {
+    'Summative period': '2026 annual',
+    'Overall progress summary': 'Initial summative payload for PDF parity baseline.',
+    'Submission readiness assessment': 'Initial readiness note.',
+    'Supervisor recommendation': 'Proceed.',
+  });
+  first = await printSupervisorSummativeReport(supervisorActor, standard.caseId);
+  firstStats = await fs.stat(first.pdfPath);
+  await patchSupervisorSummativeReport(supervisorActor, standard.caseId, {
+    'Overall progress summary': 'Updated summative payload '.repeat(18),
+  });
+  second = await printSupervisorSummativeReport(supervisorActor, standard.caseId);
+  secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
+
+  await patchOtherRequest(standard.studentActor, standard.caseId, {
+    'Request category': 'Administrative exception',
+    'Request details': 'Initial other-request payload for PDF parity baseline.',
+    'Impact statement': 'Initial impact statement.',
+  });
+  first = await printOtherRequest(standard.studentActor, standard.caseId);
+  firstStats = await fs.stat(first.pdfPath);
+  await patchOtherRequest(standard.studentActor, standard.caseId, {
+    'Request details': 'Updated other-request payload '.repeat(18),
+  });
+  second = await printOtherRequest(standard.studentActor, standard.caseId);
+  secondStats = await fs.stat(second.pdfPath);
+  assert.equal(first.pdfPath, second.pdfPath);
+  assert.equal(firstStats.size !== secondStats.size || secondStats.mtimeMs > firstStats.mtimeMs, true);
 });
 
 test('provider-login succeeds in trusted_header mode with trusted source and valid secret', async () => {

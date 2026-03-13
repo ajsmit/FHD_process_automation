@@ -10,6 +10,11 @@
 /client/.next_backup*
 /server/dist
 /server/dev.sqlite3
+/test-results
+/playwright-report
+/blob-report
+/.playwright
+/.cache/ms-playwright
 /GUIDANCE/*.html
 /GUIDANCE/*_files/
 /FHD_process_automation.code-workspace

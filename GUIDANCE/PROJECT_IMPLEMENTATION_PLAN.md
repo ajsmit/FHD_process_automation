@@ -168,6 +168,12 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
     - controller + route wiring under `/api/v1/title-registration/cases/:caseId/upgrade-msc-to-phd/*`.
   - added regression coverage for `UPGRADE_MSC_TO_PHD` lifecycle:
     - prefill coherence + submit/dept/faculty approval path,
+  - policy hardening tranche completed (2026-03-12, annual controls):
+    - introduced annual Faculty deadline store (`faculty_process_calendar`) with editable year records and published notice text.
+    - exposed deadline API surface and dashboard landing visibility for student/supervisor awareness before progression work.
+    - enforced `INTENTION_TO_SUBMIT` prerequisite on submitted `PROGRESS_REPORT` in addition to MOU.
+    - enforced ROTT canonical immutability after Faculty approval; post-approval edits now require change-request modules.
+    - extended regression coverage for annual warning visibility + ROTT immutability + ITS prerequisite enforcement.
     - review-order enforcement + return/resubmit loop.
   - implemented baseline `SUPERVISOR_SUMMATIVE_REPORT` module backend surface:
     - migration `supervisor_summative_report_forms`,
@@ -192,7 +198,52 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
       - `SUPERVISOR_SUMMATIVE_REPORT`
       - `OTHER_REQUEST`
     - added dedicated `ProgressionModulePanels` UI surface and sidebar module entries.
-  - extended UI regression coverage (`e2e/phaseb-modules.spec.ts`) to assert panel/status rendering for all new progression+exception modules.
+- extended UI regression coverage (`e2e/phaseb-modules.spec.ts`) to assert panel/status rendering for all new progression+exception modules.
+- Phase-C hardening tranche (Sections 1-3) completed on 2026-03-12:
+  - implemented explicit prerequisite gates for progression modules in `progressionModulesService.ts`:
+    - `LEAVE_OF_ABSENCE` requires submitted `PROGRESS_REPORT`,
+    - `READMISSION_REQUEST` requires submitted `LEAVE_OF_ABSENCE`,
+    - `UPGRADE_MSC_TO_PHD` requires MSc/Masters baseline + submitted `PROGRESS_REPORT`,
+    - `SUPERVISOR_SUMMATIVE_REPORT` requires submitted `PROGRESS_REPORT`, submitted `INTENTION_TO_SUBMIT`, and submitted `APPOINT_EXAMINERS` or `CHANGE_EXAMINERS`.
+  - fixed `UPGRADE_MSC_TO_PHD` degree gate parity to accept canonical `MSC` in addition to `Masters` wording.
+  - expanded workflow integration regressions (`server/src/services/workflow/changeRequestModulesService.test.ts`) with:
+    - negative prerequisite-gate assertions for progression modules,
+    - operations-feed parity checks for `pipeline`/`tasks`/`to-do` module-entry surfacing,
+    - progression module PDF regeneration parity checks against persisted DB-state changes.
+  - hardened operations feed payload parity by including `module_entries.case_id` in task rows (`operationsFeedService.ts`) to support deterministic case-scoped task regression checks.
+- Phase-C hardening tranche Section 4 completed on 2026-03-12:
+  - extended Playwright module regression suite (`e2e/phaseb-modules.spec.ts`) from panel-load checks to transactional progression coverage:
+    - `PROGRESS_REPORT` approval-path telemetry parity,
+    - `UPGRADE_MSC_TO_PHD` approval-path telemetry parity,
+    - `LEAVE_OF_ABSENCE` return-and-resubmit flow,
+    - `SUPERVISOR_SUMMATIVE_REPORT` supervisor-role/prerequisite gate coverage.
+  - added demo-auth support for multi-student UI workflow validation by introducing active student actor switching in client API (`client/lib/api.ts`) and seeded additional demo student user accounts (`server/src/db/seedDemoData.ts`).
+  - validated UI regression suite end-to-end with `npm run test:e2e:ui` (11/11 passing).
+- Phase-C hardening tranche Section 5 completed on 2026-03-12:
+  - expanded `POLICY_FIELD_MAP.md` from progression stubs to full field-level mappings for:
+    - `PROGRESS_REPORT`
+    - `LEAVE_OF_ABSENCE`
+    - `READMISSION_REQUEST`
+    - `UPGRADE_MSC_TO_PHD`
+    - `SUPERVISOR_SUMMATIVE_REPORT`
+    - `OTHER_REQUEST`
+  - regenerated OpenAPI contract (`npm run -w server openapi:generate`) with no artifact drift in `server/openapi/openapi.v1.json`.
+- Reliability/operationalization tranche Sections 1-2 completed on 2026-03-13:
+  - E2E determinism/data-isolation hardening:
+    - removed inter-test case coupling by assigning isolated seeded student identities to high-impact transactional module regressions.
+    - validated deterministic behavior with two consecutive full UI regression suite runs (`npm run test:e2e:ui`) without manual DB cleanup.
+  - role-accurate UI/API regression expansion:
+    - added explicit unauthorized review-path assertions for restricted role endpoints:
+      - `CHANGE_TITLE` supervisor-review (student rejection).
+      - `PROGRESS_REPORT` dept/faculty review role matrix (student/supervisor/dept rejection as applicable).
+    - retained successful authorized-path assertions in the same transactional flows.
+- Reliability/operationalization tranche Sections 3-4 completed on 2026-03-13:
+  - operations feed behavior hardening:
+    - added mixed-state regression coverage for cross-case parity where the same module is `action_required` on one case and `in_progress` on another.
+    - asserted consistent case-scoped surfacing in `pipeline`, `tasks`, and `to-do`.
+  - artifact/workspace hygiene hardening:
+    - expanded ignored Playwright runtime artifact paths (`blob-report`, `.playwright`, `.cache/ms-playwright`) to prevent generated-report VCS noise under alternate local reporter/cache modes.
+    - validated no artifact tracking drift after full UI regression execution.
 
 ### 2.2 In progress
 - None (closed on 2026-03-11).
@@ -201,9 +252,12 @@ Digitize the postgraduate process from ROTT through downstream approvals using c
 - None (closed on 2026-03-12): all remaining progression/change forms from `ridiculous_forms` are now baseline-implemented on server lifecycle routes with regression coverage.
 
 ### 2.4 Next Iteration (this morning)
-- Phase-C hardening and parity closure for newly implemented progression/exception modules.
+- None (closed on 2026-03-12): Phase-C hardening and parity closure complete.
+
+### 2.5 Next Iteration (upcoming)
+- Reliability/operationalization tranche after Phase-C closure.
 - Execution set is defined in:
-  - [NEXT_ITERATION_EXECUTION_SET_2026-03-12.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-12.md)
+  - [NEXT_ITERATION_EXECUTION_SET_2026-03-13.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-13.md)
 
 ## 3. Execution Guardrails
 1. Follow policy and mapping owners before implementation:
@@ -269,4 +323,5 @@ Exit criteria:
 10. Completed 2026-03-11: finalized supervisor-role symmetry refactor in dashboard hook wiring (`useDashboardPhaseBModules.ts`, `useDashboardCoreCase.ts`) and validated with full server tests plus client production build.
 11. Completed 2026-03-11: closed Post-AD-001 decomposition stream by adding CI service-boundary guardrails (`scripts/check-service-boundaries.sh`) and wiring them into `.github/workflows/main.yml`.
 12. Completed 2026-03-11: closed Phase-B next-wave modules baseline stream and extended E2E/UI regressions with prerequisite-guard and panel-telemetry coverage (`e2e/phaseb-modules.spec.ts`).
-13. Planned 2026-03-12 morning: execute Phase-C hardening queue per [NEXT_ITERATION_EXECUTION_SET_2026-03-12.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-12.md) (policy gate parity, operational feed parity, UI transactional regressions, doc+contract sync).
+13. Completed 2026-03-12: executed Phase-C hardening queue per [NEXT_ITERATION_EXECUTION_SET_2026-03-12.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-12.md) (policy gate parity, operational feed parity, UI transactional regressions, doc+contract sync).
+14. Planned 2026-03-13: execute reliability/operationalization queue per [NEXT_ITERATION_EXECUTION_SET_2026-03-13.md](./NEXT_ITERATION_EXECUTION_SET_2026-03-13.md) (E2E determinism, role-accurate UI coverage, operations-feed hardening, hygiene sync).
